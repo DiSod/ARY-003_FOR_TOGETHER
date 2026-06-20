@@ -92,3 +92,40 @@
 - 已实现 DEV-1 可运行验证：在 `packages/dev-1-impl/` 下用纯 Node.js（零依赖）建了 4 个核心模块——`stores.js`（14 个内存存储 + 唯一键索引）、`auth.js`（五类作用域中间件）、`state-machine.js`（6 条核心链路状态迁移）、`ca-verifier.js`（DCR Desktop App 验签/防重放/隔离审计管道）——以及 1 份 `acceptance.test.js`，共 46 条测试用例，`node --test` 全绿（46 pass / 0 fail）。
 - 已建立正式项目根目录 `project/`：将 DEV-1 实现从 `packages/dev-1-impl/` 迁入 `project/src/` 和 `project/test/`，补入 `project/README.md`（引用 `design-prototype/` 和 `docs/` 作为上下游约束），`project/package.json` 支持 `npm test` 一键跑通全部 46 条用例。
 - 已将设计原型完整接入 `project/public/`：`index.html`、`styles.css`、`script.js`、`data/`、`assets/`（含 `logo-horse-compass-transparent.png`）、全部 24 张截图证据；添加 `project/server.js` 零依赖静态服务，`npm start` → `http://localhost:3000` 可在浏览器中查看 16 个高保真页面和空态/错误态样张。
+
+## 2026-06-20 — DEV-3 第二阶段增强
+
+### 完成内容
+基于第一阶段反馈，大幅增强了 Console 的实用功能：
+
+| 功能 | 说明 | 状态 |
+| --- | --- | --- |
+| **Organizer 标签页** | 概览/报名管理/创建赛事 三个标签页 | ✅ |
+| **报名管理面板** | 显示报名用户详情、GitHub ID、时间、RaceProject 状态、审核按钮 | ✅ |
+| **创建赛事表单** | 输入名称/赛题/slug/状态，POST /api/races 创建 | ✅ |
+| **Rider 标签页** | 概览/CA接入/作品提交 三个标签页 | ✅ |
+| **Rider 概览** | 报名状态、RaceProject、约束校验（DEV-1）、CA 连接摘要 | ✅ |
+| **CA 接入管理** | 登记 CA 连接（connector/project/type）、展示连接列表 | ✅ |
+| **作品提交** | 创建/提交作品表单（标题/摘要/代码仓库链接） | ✅ |
+| **创建赛事 API** | 后端 POST /api/races 支持新建赛事 | ✅ |
+| **数据刷新** | refreshData() 统一刷新所有数据，保持 UI 同步 | ✅ |
+
+### 浏览器验证
+- ✅ Console 页面 `http://localhost:3000/console` 正常渲染
+- ✅ 侧边栏展示 3 场赛事 + Admin 管理入口
+- ✅ Organizer 工作台三个标签页切换正常（概览/报名管理/创建赛事）
+- ✅ Organizer 概览：报名统计(1/1/0)、赛程日期、作品数
+- ✅ Organizer 报名管理：骑手小明信息完整
+- ✅ Organizer 创建赛事：表单字段正常
+- ✅ 现有 46 条测试全部通过
+
+### 文件变更
+| 文件 | 变更 |
+| --- | --- |
+| `project/public/console.html` | 重写 JS，添加标签页系统、CA 管理、作品提交、创建赛事表单 |
+| `project/src/app.js` | 新增 `POST /api/races` 创建赛事接口 |
+
+### 未完成
+- [ ] Judge View 评审流程（待 DEV-4 API 就绪）
+- [ ] GitHub OAuth 真实登录（当前为 Demo 模式）
+- [ ] Public Site 和 Console 之间的统一导航
