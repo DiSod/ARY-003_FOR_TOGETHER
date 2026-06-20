@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ARY Race Gallery</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="deck-shell">
+      <header class="deck-header" aria-label="ARY public navigation">
+        <a class="brand" href="#home" data-page="home" aria-label="ARY home">
+          <span class="brand-emblem" aria-hidden="true">
+            <img src="./assets/logo-horse-compass-transparent.png" alt="" />
+          </span>
+          <span>
+            <strong>Agent Racing Yard</strong>
+            <small>骑行智能体 纵横三万里</small>
+          </span>
+        </a>
+
+        <nav class="ia-nav" aria-label="Public site navigation">
+          <button class="active" type="button" data-page="home">Races</button>
+          <button type="button" data-page="works">Works</button>
+          <button type="button" data-page="rider">Riders</button>
+          <button type="button" data-page="cooperation">Cooperation</button>
+        </nav>
+
+        <div class="workspace-entry" aria-label="Workspace entry">
+          <button type="button">Login</button>
+        </div>
+      </header>
+
+      <main class="deck" aria-label="ARY high-fidelity prototype">
+        <section class="page page-home active" data-page-panel="home" aria-label="Home Race Gallery">
+          <div class="speed-bg" aria-hidden="true"></div>
+
+          <section class="hero-copy">
+            <h1>湾区开心游</h1>
+            <div class="hero-live-switcher" aria-label="Live race switcher">
+              <button class="active" type="button" data-live-race="bay-area-happy-trip" aria-label="切换到湾区开心游"></button>
+              <button type="button" data-live-race="smart-investment-analyst" aria-label="切换到智能投研助理"></button>
+            </div>
+            <p class="hero-subtitle">
+              赛题：构建大湾区旅行、游玩伴随 Agent，让路线、预算、天气和本地灵感成为可展示的赛场作品。
+            </p>
+            <div class="hero-meta">
+              <span><b>36</b> riders</span>
+              <span><b>27</b> active</span>
+              <span><b>14</b> works</span>
+              <span><b>02:18:44</b> submit left</span>
+            </div>
+            <div class="hero-actions">
+              <button type="button" data-page="live">进入 Live Hall</button>
+              <button type="button" data-page="race">查看赛题</button>
+            </div>
+          </section>
+
+          <section class="race-visual" aria-label="Featured race visual">
+            <canvas id="homeCanvas" aria-label="Agent racing hero track"></canvas>
+            <div class="time-gate">01:26:88</div>
+          </section>
+
+          <section class="benefit-row" aria-label="Gallery featured assets">
+            <article>
+              <span class="icon-card">Work</span>
+              <div>
+                <h2>GBA WanderMate</h2>
+                <p>湾区开心游 / Mira Chen / 路线 Demo 已上墙</p>
+                <button type="button" data-page="works">查看作品</button>
+              </div>
+            </article>
+            <article>
+              <span class="icon-card">Rider</span>
+              <div>
+                <h2>Mira Chen</h2>
+                <p>Local-life builder / route planning / evidence summary</p>
+                <button type="button" data-page="rider">查看档案</button>
+              </div>
+            </article>
+          </section>
+
+          <aside class="gallery-stack gallery-drawer" aria-label="Race gallery modules">
+            <button class="drawer-rail" type="button" data-gallery-drawer-toggle aria-expanded="false">
+              <span>Race Updates</span>
+              <b>4</b>
+            </button>
+            <div class="drawer-panel" aria-label="Race updates drawer">
+              <div class="drawer-head">
+                <span>Race Updates</span>
+                <button type="button" data-gallery-drawer-toggle aria-expanded="false">收起</button>
+              </div>
+              <article class="glass-card featured-race">
+                <div class="card-head">
+                  <span>Open Registration</span>
+                  <b>Open</b>
+                </div>
+                <h3>网商经营 Copilot</h3>
+                <p>小商家经营 Agent 赛道正在报名，选品、上新、客服和复盘将进入下一轮 Race。</p>
+                <div class="mini-stats">
+                  <span><b>41</b> applicants</span>
+                  <span><b>60</b> seats</span>
+                  <span><b>Open</b> status</span>
+                </div>
+                <div class="card-actions">
+                  <button type="button" data-page="cooperation">报名入口</button>
+                  <button type="button" data-page="cooperation">办赛合作</button>
+                </div>
+              </article>
+              <article class="glass-card compact-list latest-results-list">
+                <div class="card-head">
+                  <span>Latest Results</span>
+                  <b>Published</b>
+                </div>
+                <div><span>创世骑行挑战赛</span><b>最佳自举作品</b></div>
+                <div><span>政务办事导航 Agent</span><b>最佳可信流程</b></div>
+              </article>
+              <article class="glass-card compact-list past-races-list">
+                <div class="card-head">
+                  <span>Past Races</span>
+                  <b>Archive</b>
+                </div>
+                <div><span>自媒体运营 Agent</span><b>评审中</b></div>
+                <div><span>医疗随访助手</span><b>即将开放</b></div>
+              </article>
+              <article class="glass-card compact-list cooperation-teaser">
+                <div class="card-head">
+                  <span>开放报名 / 合作入口</span>
+                  <b>Open</b>
+                </div>
+                <div><span>网商经营 Copilot</span><b>报名中</b></div>
+                <div><span>健康习惯教练</span><b>报名中</b></div>
+              </article>
+            </div>
+          </aside>
+        </section>
+
+        <section class="page page-race" data-page-panel="race" aria-label="Race Page">
+          <div class="page-label">
+            <span>Race Day</span>
+            <b>02 / 10</b>
+          </div>
+          <section class="race-hero-panel">
+            <p class="section-kicker">湾区开心游 / 正在骑行 / 作品提交开放</p>
+            <h1>让 Agent 带你玩转大湾区</h1>
+            <p class="race-summary">
+              从早茶、海岸线、展馆到夜色街区，Rider 正在训练自己的旅行 Agent，把一次周末出发变成可展示的智能体作品。
+            </p>
+            <div class="race-cta-row">
+              <button type="button" data-page="live">进入 Live Hall</button>
+              <button type="button" data-page="works">查看作品</button>
+              <button type="button" data-page="home">查看下一场</button>
+            </div>
+          </section>
+          <section class="race-state-grid">
+            <article class="state-card active"><span>报名席</span><b>已锁定</b><p>36 位 Rider 入场</p></article>
+            <article class="state-card active"><span>赛道</span><b>进行中</b><p>27 位正在骑行</p></article>
+            <article class="state-card active"><span>提交</span><b>开放</b><p>剩余 02:18:44</p></article>
+            <article class="state-card"><span>评审席</span><b>待开席</b><p>18 份作品待分配</p></article>
+            <article class="state-card"><span>颁奖</span><b>未揭晓</b><p>冠军席仍在等待</p></article>
+          </section>
+          <section class="race-content-grid">
+            <article class="glass-card"><span>今日赛题</span><h2>一日湾区畅游</h2><p>早茶路线、亲子馆展、海边日落，都要有理由、有预算、有备用方案。</p></article>
+            <article class="glass-card"><span>赛程</span><h2>4 小时冲刺</h2><p>10:00 开跑，14:00 冲刺，16:00 前把 Demo、路线故事和亮点片段送上作品墙。</p></article>
+            <article class="glass-card"><span>骑手阵容</span><h2>36 名 Rider</h2><p>27 位在线，3 位进入成本观察，5 个现场提醒。</p></article>
+            <article class="glass-card"><span>现场看点</span><h2>路线、预算、惊喜点</h2><p>每隔几分钟，赛道都会冒出新的路线、分数和即将冲线的作品。</p></article>
+          </section>
+          <aside class="right-dashboard">
+            <h2>本场入口</h2>
+            <button class="active" type="button">赛题</button>
+            <button type="button">赛程</button>
+            <button type="button" data-page="live">Live</button>
+            <button type="button" data-page="rider">Riders</button>
+            <button type="button" data-page="works">Works</button>
+            <button type="button" data-page="results">Results</button>
+            <button type="button" data-page="review">Review</button>
+          </aside>
+        </section>
+
+        <section class="page page-live" data-page-panel="live" aria-label="Live Hall">
+          <div class="page-label">
+            <span>Live Hall / Riding Now</span>
+            <b>03 / 10</b>
+          </div>
+          <section class="live-header">
+            <div>
+              <p class="section-kicker">Live Hall / 湾区开心游</p>
+              <h1>湾区旅行 Agent 正在骑行</h1>
+            </div>
+            <div class="live-score">
+              <span>Riding Signal</span>
+              <b id="signalValue">76%</b>
+            </div>
+          </section>
+          <section class="live-track">
+            <canvas id="liveCanvas" aria-label="Live Hall projection"></canvas>
+          </section>
+          <aside class="live-metrics">
+            <article><span>Riders</span><b>36 / 27 active</b><p>湾区赛道保持高速。</p></article>
+            <article><span>Records</span><b>188</b><p>路线、问答、修正和作品片段持续进场。</p></article>
+            <article><span>Cost</span><b>$512.70</b><p>3 位 Rider 需要控制预算。</p></article>
+            <article><span>Signals</span><b>5 alerts</b><p>冲线、停滞、成本和提交提醒。</p></article>
+          </aside>
+          <section class="event-stream">
+            <article><b>10:42</b><span>Mira 完成偏好建模和路线生成 checkpoint。</span></article>
+            <article><b>11:16</b><span>Jun 进入 cost watch，但仍保持 active。</span></article>
+            <article><b>11:28</b><span>LocalJoy Agent 提交第一版 Demo。</span></article>
+            <article><b>11:47</b><span>Rae 42 分钟无新 Session Summary。</span></article>
+          </section>
+          <section class="leaderboard-panel">
+            <h2>Current Process Leaderboard</h2>
+            <ol>
+              <li><span>01</span><b>Mira Chen</b><em>94.8</em></li>
+              <li><span>02</span><b>Ana Ruiz</b><em>91.2</em></li>
+              <li><span>03</span><b>Jun Park</b><em>88.5</em></li>
+            </ol>
+            <p>过程榜单用于观看，不作为最终 Results。</p>
+          </section>
+        </section>
+
+        <section class="page page-works" data-page-panel="works" aria-label="Works">
+          <div class="page-label"><span>Works / Showcase</span><b>04 / 10</b></div>
+          <section class="module-title">
+            <p class="section-kicker">湾区开心游 / 作品墙</p>
+            <h1>湾区开心游作品墙</h1>
+            <p class="module-summary">4 个作品 / 2 个已完成 / 1 个评审中</p>
+          </section>
+          <section class="works-toolbar" aria-label="Works filter and sort">
+            <button class="active" type="button">全部公开作品</button>
+            <button type="button">精选</button>
+            <button type="button">已获奖</button>
+            <button type="button">评审中</button>
+            <span>排序：最新提交</span>
+          </section>
+          <section class="work-grid">
+            <article class="work-card hero-work"><span>Featured Work</span><h2>GBA WanderMate</h2><p>三条湾区路线已经上墙：早茶、海岸、夜景，预算和交通都标清。</p><b>湾区开心游 / Mira Chen</b><button type="button" data-page="work-detail">查看详情</button></article>
+            <article class="work-card"><span>Submitted</span><h2>LocalJoy Agent</h2><p>周末短途游作品，节奏轻快，适合第一次来湾区的朋友。</p><b>湾区开心游 / Ana Ruiz</b><button type="button" data-page="work-detail">查看详情</button></article>
+            <article class="work-card"><span>Awarded</span><h2>ARY Forge Console</h2><p>第一场创世赛的指挥席作品，把赛道节奏、作品上墙和赛后播报放在同一块大屏里。</p><b>创世骑行挑战赛 / Sara Li</b><button type="button" data-page="work-detail">查看详情</button></article>
+            <article class="work-card"><span>Judging</span><h2>Media Loop Pilot</h2><p>内容赛道已交卷，脚本、封面和排期正在评审席等分。</p><b>自媒体运营 Agent / Niko Tan</b><button type="button" data-page="work-detail">查看详情</button></article>
+          </section>
+          <aside class="asset-matrix">
+            <h2>作品橱窗</h2>
+            <div><span>主作品</span><b>名称 / Rider / 赛道</b></div>
+            <div><span>Demo 展示</span><b>可观看片段</b></div>
+            <div><span>路线故事</span><b>从想法到结果</b></div>
+            <div><span>亮点时刻</span><b>关键突破记录</b></div>
+            <div><span>评委摘录</span><b>可公开反馈</b></div>
+          </aside>
+        </section>
+
+        <section class="page page-work-detail" data-page-panel="work-detail" aria-label="Work Page">
+          <div class="page-label"><span>Work Page</span><b>05 / 13</b></div>
+          <section class="module-title">
+            <p class="section-kicker">湾区开心游 / Work Detail</p>
+            <h1>GBA WanderMate</h1>
+            <p class="module-summary">作者 Mira Chen / 公开 Demo / 12 条公开 Evidence 摘要 / 回到所属 Race</p>
+          </section>
+          <section class="profile-layout">
+            <aside class="profile-card">
+              <div class="avatar-mark">GW</div>
+              <h2>作品资产</h2>
+              <p>旅行 Agent / demo ready / public evidence</p>
+              <div class="profile-stats">
+                <span><b>12</b> evidence refs</span>
+                <span><b>03</b> route stories</span>
+                <span><b>01</b> public demo</span>
+              </div>
+            </aside>
+            <section class="portfolio-grid">
+              <article><span>Demo</span><b>路线 Demo 可观看</b></article>
+              <article><span>所属赛事</span><b>湾区开心游</b></article>
+              <article><span>作者</span><b>Mira Chen</b></article>
+              <article><span>返回上下文</span><b>Race / Works / Rider</b></article>
+              <article><span>Evidence 摘要</span><b>偏好建模 / 路线验证</b></article>
+              <article><span>亮点时刻</span><b>海岸线纠偏成功</b></article>
+              <article><span>评委摘录</span><b>产品清晰，节奏稳定</b></article>
+              <article><span>下一步</span><b><button type="button" data-page="works">返回作品墙</button></b></article>
+            </section>
+          </section>
+        </section>
+
+        <section class="page page-results" data-page-panel="results" aria-label="Results">
+          <div class="page-label"><span>Results / Awards</span><b>05 / 10</b></div>
+          <section class="module-title">
+            <p class="section-kicker">创世骑行挑战赛 / 已发布</p>
+            <h1>创世骑行挑战赛赛果</h1>
+            <p class="module-summary">1 个冠军作品 / 3 个入围作品 / 164 个现场片段</p>
+          </section>
+          <section class="award-grid">
+            <article><span>最佳自举作品</span><b>ARY Forge Console</b><p>创世骑行挑战赛 / Sara Li</p></article>
+            <article><span>入围作品</span><b>Genesis Track Kit</b><p>创世骑行挑战赛 / Team Blue</p></article>
+            <article><span>骑行能力亮点</span><b>成本控制 / 纠偏 / 协作</b><p>Sara Li / 26 sessions</p></article>
+            <article><span>评审总结</span><b>Review 已发布</b><p>3 个高光案例 / 2 条评委摘录</p></article>
+          </section>
+          <aside class="result-aside">
+            <h2>Winning Works</h2>
+            <div><b>01</b><span>ARY Forge Console</span><em>Winner</em></div>
+            <div><b>02</b><span>Genesis Track Kit</span><em>Shortlist</em></div>
+            <div><b>03</b><span>Review Board</span><em>Shortlist</em></div>
+            <button type="button" data-page="review">查看 Review</button>
+          </aside>
+        </section>
+
+        <section class="page page-review" data-page-panel="review" aria-label="Review">
+          <div class="page-label"><span>Review / Race Report</span><b>06 / 10</b></div>
+          <section class="module-title">
+            <p class="section-kicker">创世骑行挑战赛 / 已发布</p>
+            <h1>创世骑行挑战赛复盘</h1>
+            <p class="module-summary">3 个高光案例 / 2 条评委摘录 / 164 个现场片段</p>
+          </section>
+          <section class="review-layout">
+            <article class="quote-card">
+              <p>我们希望最后留下的，不是一句“我用过 AI 写代码”，而是一份能被打开、被观看、被继续追赶的赛场作品。</p>
+            </article>
+            <div class="review-card-grid">
+              <article><span>冠军理由</span><b>ARY Forge 的冲线瞬间</b><p>把复杂开局整理成可以继续奔跑的创世作品。</p></article>
+              <article><span>高光案例</span><b>3 个创世故事</b><p>作品、过程、点评组合成第一批赛场记忆。</p></article>
+              <article><span>评委摘录</span><b>18 条公开点评</b><p>最值得保留的是真实推进中的判断和取舍。</p></article>
+              <article><span>现场片段</span><b>86 个高光记录</b><p>从混沌起跑到产品成形，关键节点都被留下。</p></article>
+              <article><span>下一场</span><b>湾区开心游</b><p>旅行赛道正在进行，优秀作品会进入下一轮展示。</p></article>
+            </div>
+          </section>
+        </section>
+
+        <section class="page page-rider" data-page-panel="rider" aria-label="Rider Profile">
+          <div class="page-label"><span>Rider Profile</span><b>07 / 10</b></div>
+          <section class="module-title">
+            <p class="section-kicker">Rider / 湾区开心游</p>
+            <h1>Mira Chen</h1>
+            <p class="module-summary">8 projects / 26 sessions / 92% completion</p>
+          </section>
+          <section class="profile-layout">
+            <aside class="profile-card">
+              <div class="avatar-mark">MC</div>
+              <h2>Mira Chen</h2>
+              <p>Agent Rider / Local-life builder</p>
+              <div class="profile-stats"><span><b>8</b> projects</span><span><b>26</b> sessions</span><span><b>92%</b> completion</span></div>
+            </aside>
+            <section class="portfolio-grid">
+              <article><span>Race 完赛证书</span><b>湾区开心游 checkpoint</b></article>
+              <article><span>项目作品</span><b>GBA WanderMate</b></article>
+              <article><span>Riding Replay</span><b>Route correction replay</b></article>
+              <article><span>过程记录</span><b>偏好建模 → 路线验证</b></article>
+              <article><span>评审反馈</span><b>产品清晰，拆解到位</b></article>
+              <article><span>能力标签</span><b>Prompt 工程 / 风险处理 / 团队协作</b></article>
+              <article><span>成本控制</span><b>$42.80 / 稳定</b></article>
+              <article><span>风险处理</span><b>2 次路线纠偏</b></article>
+            </section>
+          </section>
+        </section>
+
+        <section class="page page-cooperation" data-page-panel="cooperation" aria-label="Cooperation">
+          <div class="page-label"><span>Cooperation</span><b>08 / 10</b></div>
+          <section class="module-title">
+            <p class="section-kicker">报名 / 办赛 / 赞助</p>
+            <h1>下一场 Race 如何加入</h1>
+            <p class="module-summary">网商经营 Copilot 与健康习惯教练正在报名；企业、学校和社区可以发起自己的 Agent Racing 赛道。</p>
+          </section>
+          <section class="cooperation-grid">
+            <article class="glass-card"><span>报名参赛</span><h2>网商经营 Copilot</h2><p>面向小商家经营 Agent，报名席开放中，容量 60 位。</p><button type="button" data-page="race">查看赛题</button></article>
+            <article class="glass-card"><span>发起赛事</span><h2>定制 Race Track</h2><p>围绕真实业务挑战组织 Rider、评委、作品墙和现场展示。</p><button type="button" data-page="console">进入工作台</button></article>
+            <article class="glass-card"><span>赞助合作</span><h2>作品与人才展示</h2><p>支持赛题、奖项、导师点评和赛后公开资产沉淀。</p><button type="button" data-page="home">返回赛事</button></article>
+          </section>
+        </section>
+
+        <section class="page page-console" data-page-panel="console" aria-label="Race Console">
+          <div class="page-label"><span>Race Console</span><b>09 / 12</b></div>
+          <aside class="console-sidebar">
+            <h2>Race Workspace</h2>
+            <button class="active" type="button">Organizer View</button>
+            <button type="button" data-page="rider-view">Rider View</button>
+            <button type="button" data-page="judge-view">Judge View</button>
+            <button type="button" data-page="admin">Admin Console</button>
+            <button type="button" data-page="screen-console">Screen Console</button>
+          </aside>
+          <section class="console-main">
+            <p class="section-kicker">Organizer View / 湾区开心游 / managed Race</p>
+            <h1>湾区开心游指挥席</h1>
+            <div class="ops-grid">
+              <article><span>赛道</span><b>Running</b><p>作品提交开放</p></article>
+              <article><span>报名席</span><b>36 / 41</b><p>Rider 已入场</p></article>
+              <article><span>连接</span><b>34 / 36</b><p>2 位证据缺口</p></article>
+              <article><span>作品</span><b>14</b><p>已上墙</p></article>
+              <article><span>评审风险</span><b>6</b><p>待评审前检查</p></article>
+              <article><span>播报</span><b>draft</b><p>赛后整理中</p></article>
+            </div>
+            <section class="ops-table">
+              <div><b>Rae Stone</b><span>Idle risk</span><em>review flag: no summary for 42m</em></div>
+              <div><b>Ivy Sun</b><span>verification_failed</span><em>来源异常摘要可见 / needs judge attention</em></div>
+              <div><b>Jun Park</b><span>Cost watch</span><em>monitor before review</em></div>
+              <div><b>Ana Ruiz</b><span>quarantined</span><em>重放拦截后已隔离 / 不进入正式事实链路</em></div>
+            </section>
+          </section>
+        </section>
+
+        <section class="page page-rider-view" data-page-panel="rider-view" aria-label="Rider View">
+          <div class="page-label"><span>Rider View</span><b>10 / 13</b></div>
+          <aside class="console-sidebar">
+            <h2>Rider Workspace</h2>
+            <button type="button" data-page="console">Organizer View</button>
+            <button class="active" type="button">Registration</button>
+            <button type="button">CA Setup</button>
+            <button type="button">Riding Status</button>
+            <button type="button">Work Submission</button>
+            <button type="button">Review Result</button>
+            <button type="button">Rider Report</button>
+          </aside>
+          <section class="console-main">
+            <p class="section-kicker">Rider View / 湾区开心游 / own registration</p>
+            <h1>Mira Chen 参赛工作台</h1>
+            <div class="ops-grid">
+              <article><span>Registration</span><b>approved</b><p>RaceProject 已自动生成</p></article>
+              <article><span>CA Setup</span><b>2 connections</b><p>1 verified / 1 attention</p></article>
+              <article><span>Riding Status</span><b>active</b><p>26 sessions / 92% completion</p></article>
+              <article><span>Work</span><b>draft ready</b><p>Demo 与路线故事可提交</p></article>
+              <article><span>Review Result</span><b>pending</b><p>评审尚未开始</p></article>
+              <article><span>Rider Report</span><b>waiting</b><p>赛后生成个人报告</p></article>
+            </div>
+            <section class="ops-table">
+              <div><b>Registration</b><span>approved</span><em>资格已确认 / 不因 CA 异常自动退赛</em></div>
+              <div><b>CA authenticity</b><span>verified</span><em>主连接通过设备与签名校验</em></div>
+              <div><b>CA summary</b><span>verification_failed</span><em>备用连接仅显示结果，不暴露隔离审计细节</em></div>
+              <div><b>Replay status</b><span>quarantined</span><em>重复 nonce 已隔离，不阻断已通过连接继续上报</em></div>
+              <div><b>Submission</b><span>02:18:44 left</span><em><button type="button" data-page="work-detail">查看主作品</button></em></div>
+            </section>
+          </section>
+        </section>
+
+        <section class="page page-judge-view" data-page-panel="judge-view" aria-label="Judge View">
+          <div class="page-label"><span>Judge View</span><b>11 / 13</b></div>
+          <aside class="console-sidebar">
+            <h2>Judge Workspace</h2>
+            <button type="button" data-page="console">Organizer View</button>
+            <button class="active" type="button">Assigned Works</button>
+            <button type="button">Reviewing</button>
+            <button type="button">Submitted Reviews</button>
+          </aside>
+          <section class="console-main">
+            <p class="section-kicker">Judge View / 自媒体运营 Agent / assigned work context</p>
+            <h1>评审席工作台</h1>
+            <div class="ops-grid">
+              <article><span>Assigned Works</span><b>4</b><p>待评作品已进入评审席</p></article>
+              <article><span>Evidence</span><b>14 refs</b><p>只读取摘要，不读原始 Session</p></article>
+              <article><span>Risk Flags</span><b>2</b><p>需先看接入异常摘要</p></article>
+              <article><span>Score Drafts</span><b>3</b><p>1 份待提交</p></article>
+              <article><span>Comments</span><b>18</b><p>公开摘录待筛选</p></article>
+              <article><span>Deadline</span><b>18:00</b><p>今日评审收口</p></article>
+            </div>
+            <section class="ops-table">
+              <div><b>Media Loop Pilot</b><span>assigned</span><em>内容节奏完整 / 查看 Work Detail</em></div>
+              <div><b>Evidence Summary</b><span>public + judge</span><em>作品摘要、过程摘要、评委参考</em></div>
+              <div><b>Authenticity Risk</b><span>quarantined</span><em>仅显示原因摘要，不展示内部审计细节</em></div>
+              <div><b>Action</b><span>review now</span><em><button type="button" data-page="work-detail">进入作品详情</button></em></div>
+            </section>
+          </section>
+        </section>
+
+        <section class="page page-admin" data-page-panel="admin" aria-label="Admin Console">
+          <div class="page-label"><span>Admin Console</span><b>12 / 13</b></div>
+          <aside class="console-sidebar">
+            <h2>Account Control</h2>
+            <button type="button" data-page="console">Race Console</button>
+            <button class="active" type="button">Users</button>
+            <button type="button">Profile Completion</button>
+            <button type="button">User.roles</button>
+            <button type="button" data-page="screen-console">Screen Console</button>
+          </aside>
+          <section class="console-main">
+            <p class="section-kicker">Admin Console / account scope / system</p>
+            <h1>用户与角色控制台</h1>
+            <div class="ops-grid">
+              <article><span>Users</span><b>128</b><p>已同步 GitHub 登录用户</p></article>
+              <article><span>Profiles</span><b>19</b><p>待补全资料</p></article>
+              <article><span>Roles</span><b>7</b><p>待审核角色变更</p></article>
+              <article><span>Admins</span><b>3</b><p>系统管理值守中</p></article>
+              <article><span>Audit</span><b>12</b><p>今日角色操作记录</p></article>
+              <article><span>Risk</span><b>2</b><p>高权限变更待确认</p></article>
+            </div>
+            <section class="ops-table">
+              <div><b>Rae Stone</b><span>profile pending</span><em>GitHub 已登录 / 资料未补齐</em></div>
+              <div><b>Ivy Sun</b><span>role change</span><em>judge + rider 待确认</em></div>
+              <div><b>Jun Park</b><span>organizer scope</span><em>managed race 已绑定</em></div>
+              <div><b>Mira Chen</b><span>admin audit</span><em>仅可查看系统摘要</em></div>
+            </section>
+          </section>
+        </section>
+
+        <section class="page page-screen-console" data-page-panel="screen-console" aria-label="Screen Console">
+          <div class="page-label"><span>Screen Console</span><b>13 / 14</b></div>
+          <aside class="console-sidebar">
+            <h2>Display Control</h2>
+            <button type="button" data-page="console">Race Console</button>
+            <button class="active" type="button">Race Selection</button>
+            <button type="button">Display Mode</button>
+            <button type="button">Theme / Calibration</button>
+            <button type="button">Output Control</button>
+          </aside>
+          <section class="console-main">
+            <p class="section-kicker">Screen Console / 湾区开心游 / live output control</p>
+            <h1>大屏控制台</h1>
+            <div class="ops-grid">
+              <article><span>Selected Race</span><b>湾区开心游</b><p>当前控制中的赛事</p></article>
+              <article><span>Mode</span><b>Live</b><p>可切换 Leaderboard / Works / Announcement</p></article>
+              <article><span>Preview</span><b>1080P</b><p>预览与投屏分离</p></article>
+              <article><span>Fallback</span><b>Ready</b><p>稳定 Projection / 静态公告</p></article>
+              <article><span>Latency</span><b>1.8s</b><p>屏幕刷新窗口内</p></article>
+              <article><span>Output</span><b>On air</b><p>现场大屏正在播放</p></article>
+            </div>
+            <section class="ops-table">
+              <div><b>Race Selection</b><span>湾区开心游</span><em>running / 27 active riders</em></div>
+              <div><b>Display Mode</b><span>Live Riding Board</span><em>过程榜单仅供观看</em></div>
+              <div><b>Calibration</b><span>16:9 / cool blue</span><em>亮度 82% / 远距可读</em></div>
+              <div><b>Output</b><span>Screen Display</span><em><button type="button" data-page="screen">打开输出面</button></em></div>
+            </section>
+          </section>
+        </section>
+
+        <section class="page page-state-samples" data-page-panel="state-samples" aria-label="State Samples">
+          <div class="page-label"><span>State Samples</span><b>14 / 14</b></div>
+          <section class="module-title">
+            <p class="section-kicker">UX-1 / Empty + Error / permission-aware samples</p>
+            <h1>空态与错误态样张</h1>
+            <p class="module-summary">为 `M2` 输入补齐页面级空态、错误态、权限差异和 fallback 表达，不替代后续完整状态机。</p>
+          </section>
+          <section class="state-sample-grid">
+            <article class="state-sample-card state-sample-card--empty" data-state-sample-id="public-works-empty">
+              <span>Public / Works empty</span>
+              <h2>当前赛事还没有公开作品</h2>
+              <p>作品提交仍在进行中。等第一批公开作品上墙后，这里会展示精选作品、作者与赛题上下文。</p>
+              <div class="state-actions">
+                <button type="button" data-page="race">返回赛事</button>
+                <button type="button" data-page="cooperation">查看开放报名</button>
+              </div>
+            </article>
+            <article class="state-sample-card state-sample-card--error" data-state-sample-id="public-live-fallback">
+              <span>Public / Live fallback</span>
+              <h2>Live feed 暂时不可用</h2>
+              <p>当前展示最近一次稳定 Projection 和阶段公告。过程画面恢复后，Live Hall 会继续更新。</p>
+              <div class="state-actions">
+                <button type="button" data-page="results">查看已发布赛果</button>
+                <button type="button" data-page="review">查看 Review</button>
+              </div>
+            </article>
+            <article class="state-sample-card state-sample-card--empty" data-state-sample-id="rider-ca-setup-empty">
+              <span>Rider / CA setup empty</span>
+              <h2>还没有登记 CA Connection</h2>
+              <p>你仍可继续准备作品，但当前会被标记为证据缺口。完成登记与握手后，骑行摘要才会进入正常证据链路。</p>
+              <div class="state-actions">
+                <button type="button" data-page="rider-view">返回 Rider View</button>
+                <button type="button" data-page="cooperation">查看赛题边界</button>
+              </div>
+            </article>
+            <article class="state-sample-card state-sample-card--error" data-state-sample-id="judge-authenticity-warning">
+              <span>Judge / authenticity warning</span>
+              <h2>该作品存在来源异常摘要</h2>
+              <p>评审席只显示 `verification_failed` / `quarantined` 的最小原因摘要，不展示内部隔离审计细节。</p>
+              <div class="state-actions">
+                <button type="button" data-page="judge-view">返回 Judge View</button>
+                <button type="button" data-page="work-detail">查看作品详情</button>
+              </div>
+            </article>
+            <article class="state-sample-card state-sample-card--empty" data-state-sample-id="admin-role-queue-empty">
+              <span>Admin / role queue empty</span>
+              <h2>当前没有待审核角色变更</h2>
+              <p>`User.roles` 已与当前赛事窗口同步。后续若有新增组织者、评委或值守人员，这里会重新出现待处理队列。</p>
+              <div class="state-actions">
+                <button type="button" data-page="admin">返回 Admin Console</button>
+              </div>
+            </article>
+            <article class="state-sample-card state-sample-card--error" data-state-sample-id="screen-output-error">
+              <span>Screen / output error</span>
+              <h2>大屏输出链路已切换到 fallback</h2>
+              <p>当前输出使用静态公告或最近一次稳定 Projection。控制面保留在 Screen Console，输出面不展示内部故障细节。</p>
+              <div class="state-actions">
+                <button type="button" data-page="screen-console">返回 Screen Console</button>
+                <button type="button" data-page="screen">查看输出面</button>
+              </div>
+            </article>
+          </section>
+        </section>
+
+        <section class="page page-screen" data-page-panel="screen" aria-label="Screen Display">
+          <div class="page-label"><span>Screen Display</span><b>14 / 14</b></div>
+          <div class="screen-output">
+            <div class="screen-top">
+              <span>湾区开心游 / Bay Area Happy Trip</span>
+              <b>10 / 10</b>
+            </div>
+            <h1>Live Riding Board</h1>
+            <canvas id="screenCanvas" aria-label="Screen racing projection"></canvas>
+            <div class="screen-metrics">
+              <span><b>27</b> active riders</span>
+              <span><b>188</b> sessions</span>
+              <span><b>3</b> cost watch</span>
+              <span><b>02:18:44</b> submit left</span>
+            </div>
+          </div>
+          <aside class="screen-control">
+            <h2>Display Preview</h2>
+            <button class="active" type="button">Live</button>
+            <button type="button">Leaderboard</button>
+            <button type="button">Works</button>
+            <button type="button">Announcement</button>
+            <div>
+              <span>Output only</span>
+              <b>由 Screen Console 控制</b>
+              <p>本页只表达现场输出，控制面保留在工作台。</p>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script src="./data/sample-races.js"></script>
+    <script src="./script.js"></script>
+  </body>
+</html>

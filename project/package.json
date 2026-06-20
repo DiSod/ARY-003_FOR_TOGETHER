@@ -1,0 +1,20 @@
+{
+  "name": "ary-mvp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ARY MVP — 项目根目录，聚合 UX/UI 高保真原型、领域文档基线和 DEV-1 架构实现与验收用例",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/acceptance.test.js",
+    "test:dev1": "node --test test/acceptance.test.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "body-parser": "^2.3.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "sql.js": "^1.14.1"
+  }
+}

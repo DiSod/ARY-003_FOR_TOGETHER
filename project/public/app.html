@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ARY — Agent Racing Yard</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    /* ====== 功能页面扩展样式 ====== */
+    .page-login, .page-register, .page-my-races, .page-races {
+      display: none; position: absolute; inset: 0; overflow-y: auto; padding: 20px 42px 40px;
+    }
+    .page-login.active, .page-register.active, .page-my-races.active, .page-races.active {
+      display: block;
+    }
+
+    /* Login */
+    .login-shell { max-width: 480px; margin: 60px auto 0; }
+    .login-shell h1 { font-size: 42px; font-weight: 950; color: var(--blue-950); text-align: center; margin-bottom: 8px; }
+    .login-shell .sub { text-align: center; color: var(--muted); margin-bottom: 32px; font-size: 16px; }
+    .login-user-card { display: block; width: 100%; padding: 18px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--glass); margin-bottom: 10px; cursor: pointer; text-align: left; box-shadow: var(--shadow); backdrop-filter: blur(14px); transition: all 0.2s; }
+    .login-user-card:hover { border-color: var(--blue-500); transform: translateY(-2px); }
+    .login-user-card b { display: block; font-size: 20px; color: var(--blue-950); }
+    .login-user-card span { display: block; margin-top: 4px; color: var(--blue-700); font-size: 13px; font-weight: 700; }
+    .login-user-card small { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .login-current { text-align: center; margin-bottom: 18px; padding: 10px 16px; border-radius: 12px; background: rgba(234,243,255,0.8); color: var(--blue-800); font-size: 13px; font-weight: 700; }
+    .login-current a { color: var(--blue-500); text-decoration: none; margin-left: 8px; }
+
+    /* Register */
+    .register-intro { margin-bottom: 28px; }
+    .register-intro h2 { font-size: 36px; font-weight: 950; color: var(--blue-950); margin-bottom: 8px; }
+    .register-intro p { color: var(--muted); font-size: 16px; }
+    .register-race-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    .register-race-card { padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--glass); box-shadow: var(--shadow); backdrop-filter: blur(14px); }
+    .register-race-card.done { opacity: 0.65; }
+    .register-race-card h3 { font-size: 26px; color: var(--blue-950); margin-bottom: 8px; }
+    .register-race-card p { color: var(--muted); font-size: 15px; line-height: 1.45; }
+    .register-meta { margin: 16px 0 12px; color: var(--blue-700); font-size: 14px; }
+    .register-form { margin-top: 16px; }
+    .register-form button.primary { min-height: 44px; padding: 0 28px; border: none; border-radius: 12px; color: #fff; background: linear-gradient(135deg, var(--blue-800), var(--blue-500)); font-size: 16px; font-weight: 950; cursor: pointer; box-shadow: 0 8px 20px rgba(8,91,236,0.2); }
+    .register-constraint-hint { margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .register-feedback { margin-top: 12px; padding: 14px 18px; border-radius: 12px; font-size: 15px; line-height: 1.45; }
+    .register-feedback.ok { background: #d1fae5; color: #065f46; }
+    .register-result { margin-top: 24px; padding: 18px 24px; border-radius: 14px; font-size: 15px; line-height: 1.5; }
+    .register-result.ok { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+    .register-result.error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .register-result small { font-size: 12px; opacity: 0.8; display: block; margin-top: 6px; }
+
+    /* My Races */
+    .my-race-card { padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--glass); box-shadow: var(--shadow); backdrop-filter: blur(14px); margin-bottom: 18px; }
+    .my-race-card h3 { font-size: 28px; color: var(--blue-950); margin-bottom: 12px; }
+    .my-race-status { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+    .my-race-status span { padding: 8px 14px; border-radius: 10px; background: rgba(234,243,255,0.8); color: var(--blue-800); font-size: 13px; font-weight: 700; }
+    .my-race-status b { color: var(--blue-950); }
+
+    /* Constraint checks */
+    .constraint-checks { margin-top: 16px; padding: 16px 18px; border-radius: 14px; background: rgba(248,250,252,0.8); border: 1px solid rgba(34,107,230,0.08); }
+    .constraint-checks h4 { font-size: 13px; font-weight: 950; color: var(--blue-700); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .constraint-row { display: grid; grid-template-columns: 24px 1fr; gap: 8px; align-items: start; padding: 6px 0; font-size: 14px; }
+    .constraint-row span { font-weight: 950; font-size: 14px; }
+    .constraint-row.pass span { color: #0d9488; }
+    .constraint-row.fail span { color: #ef4444; }
+    .constraint-row small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .review-flags { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: #fef3c7; color: #92400e; font-size: 13px; font-weight: 700; }
+
+    /* Race card */
+    .race-card { padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--glass); box-shadow: var(--shadow); backdrop-filter: blur(14px); margin-bottom: 16px; }
+    .race-card-head { margin-bottom: 10px; }
+    .race-status-badge { display: inline-block; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 950; text-transform: uppercase; }
+    .race-status-badge.registration { background: #d1fae5; color: #065f46; }
+    .race-status-badge.running { background: #eaf3ff; color: var(--blue-700); }
+    .race-status-badge.completed { background: #f3f4f6; color: #6b7280; }
+    .race-status-badge.judging { background: #fef3c7; color: #92400e; }
+    .race-card h3 { font-size: 24px; color: var(--blue-950); margin-bottom: 8px; }
+    .race-card p { color: var(--muted); font-size: 14px; line-height: 1.45; margin-bottom: 12px; }
+    .race-card-meta { display: flex; gap: 12px; margin-bottom: 14px; font-size: 13px; color: var(--blue-800); }
+    .my-status { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+    .my-status.approved { background: #d1fae5; color: #065f46; }
+    .my-status.submitted { background: #eaf3ff; color: var(--blue-700); }
+    .my-status.open { background: #fef3c7; color: #92400e; }
+    .race-card-actions { display: flex; gap: 8px; }
+    .race-card-actions button { min-height: 36px; padding: 0 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--glass); color: var(--blue-800); font-size: 14px; font-weight: 900; cursor: pointer; }
+    .race-card-actions button.primary { color: #fff; background: linear-gradient(135deg, var(--blue-800), var(--blue-500)); border: none; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 16px; line-height: 1.6; }
+    .empty-state button { margin-top: 16px; min-height: 40px; padding: 0 24px; }
+
+    /* Workspace entry */
+    .workspace-entry-v2 { display: flex; gap: 8px; align-items: center; }
+    .workspace-entry-v2 .user-chip { display: flex; align-items: center; gap: 8px; padding: 4px 14px; border-radius: 10px; background: rgba(234,243,255,0.8); color: var(--blue-800); font-size: 13px; font-weight: 900; }
+    .workspace-entry-v2 .user-chip button { min-height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--glass); color: var(--blue-700); font-size: 12px; font-weight: 900; cursor: pointer; }
+
+    /* CA Connection cards */
+    .ca-connection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-top: 14px; }
+    .ca-conn-card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,0.6); font-size: 13px; }
+    .ca-conn-card b { display: block; color: var(--blue-950); font-size: 15px; margin-bottom: 4px; }
+    .ca-conn-card span { display: block; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .ca-conn-card.disabled { opacity: 0.5; background: #fef2f2; }
+    .ca-conn-card.verified { border-left: 3px solid #0d9488; }
+    .ca-conn-card.verification_failed, .ca-conn-card.quarantined { border-left: 3px solid #ef4444; }
+    .badge-err { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 6px; background: #fee2e2; color: #991b1b; font-size: 11px; font-weight: 900; }
+
+    /* CA test buttons */
+    .ca-test-buttons button:hover { transform: translateY(-1px); }
+  </style>
+</head>
+<body>
+<div class="deck-shell">
+  <header class="deck-header" aria-label="ARY navigation">
+    <a class="brand" href="#" data-page="home" onclick="setPage('home');return false">
+      <span class="brand-emblem"><img src="./assets/logo-horse-compass-transparent.png" alt="" /></span>
+      <span><strong>Agent Racing Yard</strong><small>骑行智能体 纵横三万里</small></span>
+    </a>
+    <nav class="ia-nav">
+      <button type="button" data-page="home" onclick="setPage('home')">首页</button>
+      <button type="button" data-page="register" onclick="setPage('register')">报名</button>
+      <button type="button" data-page="my-races" onclick="setPage('my-races')">我的参赛</button>
+      <button type="button" data-page="races" onclick="setPage('races')">赛事</button>
+    </nav>
+    <div class="workspace-entry-v2" id="user-entry">
+      <button id="btn-login" type="button" data-page="login" onclick="setPage('login')">Login</button>
+    </div>
+  </header>
+
+  <main class="deck">
+    <!-- ====== Login Page ====== -->
+    <section class="page page-login active" data-page-panel="login" aria-label="Login">
+      <div class="login-shell">
+        <h1>ARY</h1>
+        <p class="sub">选择一个账号登录（Demo 模式）</p>
+        <div id="login-extra-info"></div>
+        <div id="login-user-list"></div>
+      </div>
+    </section>
+
+    <!-- ====== Home ====== -->
+    <section class="page page-home" data-page-panel="home" aria-label="Home">
+      <div class="speed-bg" aria-hidden="true"></div>
+      <div class="module-title" style="top:82px;left:42px;">
+        <p class="section-kicker" id="home-user-greeting"></p>
+        <h1 style="font-size:54px;margin-bottom:14px;">赛事广场</h1>
+        <p>浏览进行中的 Agent Racing 赛事，报名参赛或查看作品。</p>
+      </div>
+      <div style="position:absolute;left:42px;right:42px;top:310px;bottom:40px;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-content:start;" id="home-race-list"></div>
+    </section>
+
+    <!-- ====== Register Page ====== -->
+    <section class="page page-register" data-page-panel="register" aria-label="Register">
+      <div class="module-title" style="top:82px;left:42px;">
+        <p class="section-kicker">报名参赛</p>
+        <h1 style="font-size:48px;">选择赛事</h1>
+      </div>
+      <div style="position:absolute;left:42px;right:42px;top:260px;bottom:40px;overflow-y:auto;" id="register-content"></div>
+      <div style="position:absolute;left:42px;right:42px;bottom:20px;" id="register-result"></div>
+    </section>
+
+    <!-- ====== My Races ====== -->
+    <section class="page page-my-races" data-page-panel="my-races" aria-label="My Races">
+      <div class="module-title" style="top:82px;left:42px;">
+        <p class="section-kicker">我的参赛</p>
+        <h1 style="font-size:48px;">参赛状态</h1>
+      </div>
+      <div style="position:absolute;left:42px;right:42px;top:260px;bottom:40px;overflow-y:auto;" id="my-races-content"></div>
+    </section>
+
+    <!-- ====== Races ====== -->
+    <section class="page page-races" data-page-panel="races" aria-label="All Races">
+      <div class="module-title" style="top:82px;left:42px;">
+        <p class="section-kicker">全部赛事</p>
+        <h1 style="font-size:48px;">赛事列表</h1>
+      </div>
+      <div style="position:absolute;left:42px;right:42px;top:260px;bottom:40px;overflow-y:auto;display:grid;grid-template-columns:repeat(2,1fr);gap:18px;align-content:start;" id="races-content"></div>
+    </section>
+
+    <!-- ====== CA Connect ====== -->
+    <section class="page page-ca-connect" data-page-panel="ca-connect" aria-label="CA Connect">
+      <div class="module-title" style="top:82px;left:42px;">
+        <p class="section-kicker">CA Connection</p>
+        <h1 style="font-size:42px;">CA 接入管理</h1>
+      </div>
+      <div style="position:absolute;left:42px;right:42px;top:240px;bottom:40px;overflow-y:auto;" id="ca-connect-content"></div>
+      <div style="position:absolute;left:42px;right:42px;bottom:20px;" id="ca-result"></div>
+    </section>
+
+    <!-- ====== CA Verify ====== -->
+    <section class="page page-ca-verify" data-page-panel="ca-verify" aria-label="CA Verify">
+      <div class="module-title" style="top:82px;left:42px;">
+        <p class="section-kicker">DCR Desktop App</p>
+        <h1 style="font-size:42px;">CA 消息验签测试</h1>
+      </div>
+      <div style="position:absolute;left:42px;right:42px;top:240px;bottom:40px;overflow-y:auto;" id="ca-verify-content"></div>
+      <div style="position:absolute;left:42px;right:42px;bottom:20px;" id="ca-verify-result"></div>
+    </section>
+
+    <!-- ====== Admin Console ====== -->
+    <section class="page page-admin-console" data-page-panel="admin-console" aria-label="Admin Console">
+      <div class="module-title" style="top:82px;left:42px;">
+        <p class="section-kicker">Admin Console</p>
+        <h1 style="font-size:42px;">赛事管理</h1>
+      </div>
+      <div style="position:absolute;left:42px;right:42px;top:240px;bottom:40px;overflow-y:auto;" id="admin-content"></div>
+      <div style="position:absolute;left:42px;right:42px;bottom:20px;" id="admin-result"></div>
+    </section>
+  </main>
+</div>
+
+<script src="./app-core.js"></script>
+<script src="./test-modules.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

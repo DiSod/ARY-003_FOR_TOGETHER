@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ARY — Agent Racing Yard</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <header class="ary-header">
+    <a class="brand" href="/home.html">
+      <img src="/assets/logo-horse-compass-transparent.png" alt="" />
+      <span>Agent Racing Yard</span>
+    </a>
+    <nav>
+      <a href="/home.html" class="active">Races</a>
+      <a href="/works.html">Works</a>
+      <a href="/results.html">Results</a>
+    </nav>
+    <div class="user-area">
+      <a href="/app.html" class="btn btn-outline btn-sm">Console →</a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section" id="heroSection">
+    <div class="live-bar" id="liveBar" style="display:none">
+      <span class="live-dot"></span>
+      <span id="liveRaceTitle"></span>
+      <a id="liveRaceLink" href="#" class="btn btn-primary btn-sm">进入 Live Hall →</a>
+    </div>
+    <h1>Agent Racing Yard</h1>
+    <p class="subtitle">观看人类与 AI 协同编程的竞技场 — 骑行智能体，纵横三万里</p>
+  </section>
+
+  <!-- Race Gallery -->
+  <div class="page-container">
+    <div class="section-title">
+      <span>🏁 赛事广场</span>
+      <span style="font-size:14px;font-weight:400;color:var(--muted)" id="raceCount"></span>
+    </div>
+    <div class="race-grid" id="raceGrid">
+      <div class="empty-state"><p>加载中...</p></div>
+    </div>
+  </div>
+
+  <footer class="ary-footer">
+    Agent Racing Yard · MVP v0.2 · 骑行智能体 纵横三万里
+  </footer>
+
+  <script>
+    const API = "";
+
+    async function load() {
+      try {
+        const [statsRes, racesRes] = await Promise.all([
+          fetch(API + "/api/stats"),
+          fetch(API + "/api/races"),
+        ]);
+        const stats = await statsRes.json();
+        const races = await racesRes.json();
+
+        renderHero(stats, races);
+        renderRaces(races);
+      } catch (e) {
+        document.getElementById("raceGrid").innerHTML =
+          '<div class="empty-state"><p>无法连接服务器，请确认已启动 API 服务</p></div>';
+      }
+    }
+
+    function renderHero(stats, races) {
+      const liveRace = races.find((r) => ["running", "submitting", "judging"].includes(r.status));
+      if (liveRace) {
+        document.getElementById("liveBar").style.display = "inline-flex";
+        document.getElementById("liveRaceTitle").textContent =
+          `🔥 正在直播：${liveRace.title}`;
+        document.getElementById("liveRaceLink").href = `/race.html?slug=${liveRace.slug}`;
+      }
+    }
+
+    function statusLabel(s) {
+      const map = {
+        draft: "草稿",
+        published: "已发布",
+        registration: "报名中",
+        running: "进行中",
+        submitting: "提交中",
+        judging: "评审中",
+        completed: "已结束",
+        archived: "已归档",
+      };
+      return map[s] || s;
+    }
+
+    function statusBadgeClass(s) {
+      if (["running", "submitting", "judging"].includes(s)) return "badge-live";
+      if (s === "registration") return "badge-registration";
+      if (s === "completed") return "badge-completed";
+      return "badge-draft";
+    }
+
+    function renderRaces(races) {
+      document.getElementById("raceCount").textContent = `共 ${races.length} 场赛事`;
+      if (!races.length) {
+        document.getElementById("raceGrid").innerHTML =
+          '<div class="empty-state"><div class="icon">🏁</div><p>暂无赛事</p></div>';
+        return;
+      }
+      document.getElementById("raceGrid").innerHTML = races
+        .map(
+          (r) => `
+        <a href="/race.html?slug=${r.slug}" class="card race-card" style="text-decoration:none;color:inherit">
+          <div class="card-header">
+            <span class="badge ${statusBadgeClass(r.status)}">${statusLabel(r.status)}</span>
+            <span style="font-size:13px;color:var(--muted)">${r.registration_count} 人报名</span>
+          </div>
+          <div class="card-body">
+            <div class="card-title">${esc(r.title)}</div>
+            <div class="card-text">${esc(r.challenge_brief || "暂无赛题描述")}</div>
+            <div class="meta">
+              <span>📅 ${fmtDate(r.time_windows?.race_start)}</span>
+              <span>🏆 ${(r.award_settings || []).length || 0} 奖项</span>
+            </div>
+          </div>
+        </a>`,
+        )
+        .join("");
+    }
+
+    function esc(s) { return String(s).replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]); }
+    function fmtDate(d) { if (!d) return "待定"; return new Date(d).toLocaleDateString("zh-CN"); }
+
+    load();
+  </script>
+</body>
+</html>

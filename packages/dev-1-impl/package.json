@@ -1,0 +1,12 @@
+{
+  "name": "dev-1-impl",
+  "version": "0.1.0",
+  "description": "DEV-1 acceptance test implementation — in-memory stores, auth middleware, state machines, CA message verification",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/acceptance.test.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

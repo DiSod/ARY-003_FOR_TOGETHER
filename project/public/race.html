@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>赛事详情 — ARY</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <header class="ary-header">
+    <a class="brand" href="/home.html">
+      <img src="/assets/logo-horse-compass-transparent.png" alt="" />
+      <span>Agent Racing Yard</span>
+    </a>
+    <nav>
+      <a href="/home.html">Races</a>
+      <a href="/works.html">Works</a>
+      <a href="/results.html">Results</a>
+    </nav>
+    <div class="user-area">
+      <a href="/app.html" class="btn btn-outline btn-sm">Console →</a>
+    </div>
+  </header>
+
+  <div class="page-container" id="app">
+    <div class="empty-state"><p>加载中...</p></div>
+  </div>
+
+  <footer class="ary-footer">
+    Agent Racing Yard · MVP v0.2
+  </footer>
+
+  <script>
+    const slug = new URLSearchParams(location.search).get("slug");
+    if (!slug) location.href = "/home.html";
+
+    async function load() {
+      try {
+        const res = await fetch(`/api/races/${slug}`);
+        if (!res.ok) throw new Error("Not found");
+        const race = await res.json();
+        render(race);
+      } catch {
+        document.getElementById("app").innerHTML =
+          '<div class="empty-state"><div class="icon">🏁</div><h2>赛事未找到</h2><p><a href="/home.html">返回首页</a></p></div>';
+      }
+    }
+
+    function statusLabel(s) {
+      const map = { draft:"草稿", published:"已发布", registration:"报名中", running:"进行中", submitting:"提交中", judging:"评审中", completed:"已结束", archived:"已归档" };
+      return map[s] || s;
+    }
+
+    function esc(s) { return String(s).replace(/[<>&"]/g, c => ({ "<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;" })[c]); }
+    function fmt(d) { if (!d) return "待定"; return new Date(d).toLocaleString("zh-CN"); }
+
+    function render(race) {
+      const tw = race.time_windows || {};
+      document.getElementById("app").innerHTML = `
+        <div class="race-detail-header">
+          <span class="badge badge-${["running","submitting","judging"].includes(race.status)?"live":race.status==="registration"?"registration":race.status==="completed"?"completed":"draft"}">${statusLabel(race.status)}</span>
+          <h1>${esc(race.title)}</h1>
+          <p style="color:var(--muted);font-size:15px;margin:8px 0 16px">${esc(race.challenge_brief)}</p>
+          <div class="tl-row">
+            <div class="tl-item"><strong>报名</strong> ${fmt(tw.registration_start)} ~ ${fmt(tw.registration_end)}</div>
+            <div class="tl-item"><strong>比赛</strong> ${fmt(tw.race_start)} ~ ${fmt(tw.race_end)}</div>
+            ${tw.submission_deadline ? `<div class="tl-item"><strong>提交截止</strong> ${fmt(tw.submission_deadline)}</div>` : ""}
+            <div class="tl-item"><strong>报名人数</strong> ${race.registration_count}</div>
+            <div class="tl-item"><strong>作品数</strong> ${race.work_count}</div>
+          </div>
+          ${race.rules ? `<div style="margin-top:20px;padding:16px;background:#fff;border-radius:8px;border:1px solid var(--line)"><strong>📋 参赛规则</strong><div style="margin-top:8px;font-size:14px;color:var(--muted)">${esc(race.rules)}</div></div>` : ""}
+        </div>
+
+        <!-- Works -->
+        <div class="section-title" style="margin-top:32px">📦 作品 (${(race.works||[]).length})</div>
+        ${(race.works||[]).length === 0
+          ? '<div class="empty-state"><p>暂无作品</p></div>'
+          : `<div class="work-list">${race.works.map(w => `
+            <div class="card work-item">
+              <div class="info">
+                <h3>${esc(w.title)}</h3>
+                <p>${esc(w.summary || "暂无摘要")}</p>
+              </div>
+              <span class="badge ${w.status==='submitted'?'badge-live':'badge-draft'}">${w.status}</span>
+            </div>`).join("")}</div>`}
+
+        <!-- Awards (if completed) -->
+        ${race.status === "completed" && race.awards.length > 0 ? `
+        <div class="section-title" style="margin-top:32px">🏆 获奖名单</div>
+        <div class="leaderboard">
+          ${race.awards.map((a,i) => `
+          <div class="leaderboard-item">
+            <span class="rank ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">#${a.rank||i+1}</span>
+            <div><strong>${esc(a.award_name)}</strong><span style="font-size:13px;color:var(--muted);margin-left:8px">${esc(a.rider_name||"")} · ${esc(a.work_title||"")}</span></div>
+          </div>`).join("")}
+        </div>` : ""}
+      `;
+    }
+
+    load();
+  </script>
+</body>
+</html>

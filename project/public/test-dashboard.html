@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DEV-1 验收测试仪表盘</title>
+  <style>
+    :root { color-scheme: light; --blue-950:#06164a; --blue-900:#09266f; --blue-800:#0a3fb8; --blue-700:#075bec; --blue-500:#168cff; --blue-100:#eaf3ff; --ink:#07163e; --muted:#53668d; --pass:#0d9488; --fail:#ef4444; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:linear-gradient(180deg,#eef6ff,#eaf3ff); color:var(--ink); font-family:"PingFang SC","Microsoft YaHei",Inter,system-ui,sans-serif; min-height:100vh; }
+    .shell { max-width:1200px; margin:0 auto; padding:32px 24px 64px; }
+    .top { text-align:center; margin-bottom:36px; }
+    .top h1 { font-size:36px; font-weight:950; color:var(--blue-950); margin-bottom:8px; }
+    .top p { color:var(--muted); font-size:16px; }
+    .summary { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:32px; }
+    .summary-card { text-align:center; padding:22px 12px; border-radius:18px; background:rgba(255,255,255,0.78); border:1px solid rgba(34,107,230,0.12); box-shadow:0 8px 20px rgba(11,57,150,0.06); }
+    .summary-card b { display:block; font-size:42px; font-weight:950; }
+    .summary-card span { font-size:13px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+    .summary-card.pass b { color:var(--pass); }
+    .summary-card.fail b { color:var(--fail); }
+    .toolbar { display:flex; justify-content:center; gap:12px; margin-bottom:28px; }
+    .toolbar button { min-height:40px; padding:0 22px; border:1px solid rgba(34,107,230,0.18); border-radius:12px; color:var(--blue-800); background:rgba(255,255,255,0.72); font-size:15px; font-weight:900; cursor:pointer; }
+    .toolbar button.primary { color:#fff; background:linear-gradient(135deg,var(--blue-800),var(--blue-500)); border-color:transparent; box-shadow:0 8px 20px rgba(8,91,236,0.2); }
+    .group { margin-bottom:28px; }
+    .group-title { font-size:13px; font-weight:950; color:var(--blue-700); text-transform:uppercase; letter-spacing:2px; margin-bottom:10px; padding-left:4px; }
+    .test-row { display:grid; grid-template-columns:36px 1fr auto; align-items:center; gap:14px; padding:14px 16px; border-radius:14px; background:rgba(255,255,255,0.6); margin-bottom:6px; border:1px solid transparent; transition:all 0.15s; }
+    .test-row:hover { border-color:rgba(34,107,230,0.12); }
+    .test-row .icon { width:32px; height:32px; border-radius:50%; display:grid; place-items:center; font-size:16px; font-weight:950; }
+    .test-row.pass .icon { background:#d1fae5; color:var(--pass); }
+    .test-row.fail .icon { background:#fee2e2; color:var(--fail); }
+    .test-row.running .icon { background:#eaf3ff; color:var(--blue-700); animation:pulse 0.8s infinite; }
+    @keyframes pulse { 0%,100% {opacity:1} 50% {opacity:0.4} }
+    .test-row .name { font-size:15px; font-weight:760; color:var(--ink); }
+    .test-row .dur { font-size:12px; color:var(--muted); }
+    .test-row .msg { font-size:12px; color:var(--muted); margin-top:2px; }
+    .footer { text-align:center; margin-top:40px; color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="top">
+    <h1>DEV-1 验收测试仪表盘</h1>
+    <p>存储约束 · 鉴权策略 · 状态迁移 · CA 验签 —— 全部在浏览器内实时执行</p>
+  </div>
+  <div class="summary" id="summary"></div>
+  <div class="toolbar">
+    <button class="primary" onclick="runAll()">▶ 运行全部测试</button>
+    <button onclick="resetAll()">↻ 重置数据</button>
+  </div>
+  <div id="results"></div>
+  <div class="footer">ARY MVP · DEV-1 Acceptance Tests · 46 条用例 · 零依赖</div>
+</div>
+
+<script src="./app-core.js"></script>
+<script src="./test-modules.js"></script>
+<script>
+  const { uid, now, stores, resetAll:resetAllStores, resetKeys, auth, stateMachine, caVerifier } = window.ARY_TEST;
+
+  // --- Test definition ---
+  const suites = [];
+
+  function describe(title, fn) { suites.push({ title, tests: [] }); const ctx = suites[suites.length - 1]; fn(ctx); }
+  function it(title, fn) { suites[suites.length - 1].tests.push({ title, fn }); }
+  function assert(cond, msg) { if (!cond) throw new Error(msg || "assertion failed"); }
+  assert.ok = (v, m) => assert(v, m);
+  assert.equal = (a, b, m) => { if (a !== b) throw new Error((m || "not equal") + ": " + JSON.stringify(a) + " !== " + JSON.stringify(b)); };
+  assert.match = (s, re, m) => { if (!re.test(s)) throw new Error((m || "no match") + ": " + s); };
+
+  // --- Helpers ---
+  function seedRace(o) { return stores.races.insert({ id:uid(), slug:"race-"+uid().slice(0,8), title:"测试赛事", challengeBrief:"赛题", status:"registration", timeWindows:{}, rules:"", submissionRequirements:"", awardSettings:[], organizerUserIds:[], createdByUserId:uid(), visibility:"public", createdAt:now(), updatedAt:now(), version:1, ...o }).record; }
+  function seedUser(o) { return stores.users.insert({ id:uid(), githubAccountId:"gh-"+uid().slice(0,8), slug:"user-"+uid().slice(0,8), displayName:"测试用户", profile:{}, roles:[], profileCompletionStatus:"complete", status:"active", createdAt:now(), updatedAt:now(), version:1, ...o }).record; }
+  function seedRegistration(o) { return stores.registrations.insert({ id:uid(), raceId:uid(), userId:uid(), status:"submitted", submittedAt:now(), approvedAt:null, approvedByUserId:null, rejectedAt:null, rejectedReason:null, withdrawnAt:null, reviewFlags:[], createdAt:now(), updatedAt:now(), version:1, ...o }).record; }
+  function seedRaceProject(o) { return stores.raceProjects.insert({ id:uid(), registrationId:uid(), raceId:uid(), userId:uid(), repoUrl:null, aggregateIngestionStatus:"not_configured", connectionHealth:"no_signal", authenticitySummary:{}, reviewFlags:[], currentPrimaryWorkId:null, createdAt:now(), updatedAt:now(), version:1, ...o }).record; }
+  function seedCAConnection(o) { return stores.caConnections.insert({ id:uid(), raceProjectId:uid(), registrationId:uid(), raceId:uid(), userId:uid(), caType:"codex", connectorId:"conn-"+uid().slice(0,8), connectorVersion:"1.0", caProjectId:"caproj-"+uid().slice(0,8), ingestionStatus:"connected", authenticityStatus:"verified", authenticityReason:null, appInstanceId:null, deviceKeyId:null, deviceKeyFingerprint:null, registeredAt:now(), lastHandshakeAt:now(), lastVerifiedAt:now(), disabledAt:null, disabledReason:null, createdAt:now(), updatedAt:now(), version:1, ...o }).record; }
+  function seedSession(o) { return stores.sessions.insert({ id:uid(), caConnectionId:uid(), raceProjectId:uid(), registrationId:uid(), caSessionId:"ext-"+uid().slice(0,8), status:"active", startedAt:now(), completedAt:null, durationMs:null, taskCount:0, metrics:{}, createdAt:now(), updatedAt:now(), version:1, ...o }).record; }
+  function seedWork(o) { return stores.works.insert({ id:uid(), registrationId:uid(), raceId:uid(), ownerUserId:uid(), title:"测试作品", summary:null, description:null, demoUrl:null, videoUrl:null, repoUrl:null, status:"draft", visibility:"public", submittedAt:null, lockedAt:null, createdAt:now(), updatedAt:now(), version:1, ...o }).record; }
+
+  function ts(offsetMs) { return new Date(Date.now() + (offsetMs || 0)).toISOString(); }
+
+  // --- AC-1 ---
+  describe("AC-1: 唯一 Registration 约束", (s) => {
+    it("AC-1.1 — 首次报名正常通过", () => { const r=seedRace({status:"registration"}); const u=seedUser({roles:["rider"]}); const res=stores.registrations.insert({id:uid(),raceId:r.id,userId:u.id,status:"submitted",submittedAt:now(),approvedAt:null,approvedByUserId:null,rejectedAt:null,rejectedReason:null,withdrawnAt:null,reviewFlags:[],createdAt:now(),updatedAt:now(),version:1}); assert.ok(res.ok); assert.equal(res.record.status,"submitted"); });
+    it("AC-1.2 — 重复报名被拒绝", () => { const r=seedRace({status:"registration"}); const u=seedUser({roles:["rider"]}); seedRegistration({raceId:r.id,userId:u.id,status:"approved"}); const res=stores.registrations.insert({id:uid(),raceId:r.id,userId:u.id,status:"submitted",submittedAt:now(),approvedAt:null,approvedByUserId:null,rejectedAt:null,rejectedReason:null,withdrawnAt:null,reviewFlags:[],createdAt:now(),updatedAt:now(),version:1}); assert(!res.ok); assert.match(res.reason,/uk_race_user/); });
+    it("AC-1.3 — 不同 User 对同一 Race 各自报名成功", () => { const r=seedRace({status:"registration"}); const a=seedUser({roles:["rider"]}); const b=seedUser({roles:["rider"]}); assert.ok(seedRegistration({raceId:r.id,userId:a.id})); assert.ok(seedRegistration({raceId:r.id,userId:b.id})); });
+    it("AC-1.4 — 同一 User 对不同 Race 各自报名成功", () => { const r1=seedRace({status:"registration"}); const r2=seedRace({status:"registration"}); const u=seedUser({roles:["rider"]}); assert.ok(seedRegistration({raceId:r1.id,userId:u.id})); assert.ok(seedRegistration({raceId:r2.id,userId:u.id})); });
+  });
+
+  // --- AC-2 ---
+  describe("AC-2: 结构约束", (s) => {
+    it("AC-2.1 — Registration approved 后自动生成 RaceProject", () => { const reg=seedRegistration({status:"submitted"}); stores.registrations.update(reg.id,{status:"approved",approvedAt:now()}); const rp=seedRaceProject({registrationId:reg.id,raceId:reg.raceId,userId:reg.userId}); assert.ok(rp); assert.equal(rp.aggregateIngestionStatus,"not_configured"); });
+    it("AC-2.2 — 重复 approve 不会创建第二个 RaceProject", () => { const reg=seedRegistration({status:"approved"}); seedRaceProject({registrationId:reg.id}); const dup=stores.raceProjects.insert({id:uid(),registrationId:reg.id,raceId:reg.raceId,userId:reg.userId,repoUrl:null,aggregateIngestionStatus:"not_configured",connectionHealth:"no_signal",authenticitySummary:{},reviewFlags:[],currentPrimaryWorkId:null,createdAt:now(),updatedAt:now(),version:1}); assert(!dup.ok); assert.match(dup.reason,/uk_registration/); });
+    it("AC-2.3 — 一个 Registration 最多一个主 Work", () => { const reg=seedRegistration({status:"approved"}); seedWork({registrationId:reg.id}); const dup=seedWork({registrationId:reg.id}); assert(!dup); });
+    it("AC-2.4 — 一个 RaceProject 可登记多个 CAConnection", () => { const rp=seedRaceProject(); seedCAConnection({raceProjectId:rp.id,connectorId:"A",caProjectId:"P1"}); seedCAConnection({raceProjectId:rp.id,connectorId:"B",caProjectId:"P2"}); assert.equal(stores.caConnections.count(),2); });
+    it("AC-2.5 — 同一 connector+project 不可重复登记", () => { const rp=seedRaceProject(); seedCAConnection({raceProjectId:rp.id,connectorId:"A",caProjectId:"P1"}); const dup=stores.caConnections.insert({id:uid(),raceProjectId:rp.id,registrationId:uid(),raceId:uid(),userId:uid(),caType:"codex",connectorId:"A",connectorVersion:"1.0",caProjectId:"P1",ingestionStatus:"connected",authenticityStatus:"verified",authenticityReason:null,appInstanceId:null,deviceKeyId:null,deviceKeyFingerprint:null,registeredAt:now(),lastHandshakeAt:now(),lastVerifiedAt:now(),disabledAt:null,disabledReason:null,createdAt:now(),updatedAt:now(),version:1}); assert(!dup.ok); });
+    it("AC-2.6 — 未 approved 的 Registration 不生成 RaceProject", () => { const reg=seedRegistration({status:"submitted"}); assert.equal(stores.raceProjects.first((rp)=>rp.registrationId===reg.id),null); });
+  });
+
+  // --- AC-3 ---
+  describe("AC-3: CAConnection 有效数据准入", (s) => {
+    it("AC-3.1 — 已登记+已握手+归属正确+未禁用 → 数据进入有效链路", () => { const rp=seedRaceProject(); const cc=seedCAConnection({raceProjectId:rp.id,registrationId:rp.registrationId,ingestionStatus:"connected",authenticityStatus:"verified",disabledAt:null}); const ses=seedSession({caConnectionId:cc.id,raceProjectId:rp.id,registrationId:rp.registrationId}); assert.ok(caVerifier.canEnterSession(ses).ok); });
+    it("AC-3.2 — 未登记 CAConnection 的数据被拒收", () => { const ses=seedSession({caConnectionId:"non-existent-id"}); assert(!caVerifier.canEnterSession(ses).ok); });
+    it("AC-3.3 — 未握手的 CAConnection 数据被拒收", () => { const rp=seedRaceProject(); const cc=seedCAConnection({raceProjectId:rp.id,ingestionStatus:"not_configured"}); const ses=seedSession({caConnectionId:cc.id}); const r=caVerifier.canEnterSession(ses); assert(!r.ok); assert.equal(r.reason,"CAConnection 未握手"); });
+    it("AC-3.4 — 归属错误的 CAConnection 数据被拒收", () => { const rp=seedRaceProject(); const cc=seedCAConnection({raceProjectId:rp.id,registrationId:rp.registrationId,ingestionStatus:"connected",authenticityStatus:"verified"}); const ses=seedSession({caConnectionId:cc.id,raceProjectId:rp.id,registrationId:uid()}); const r=caVerifier.canEnterSession(ses); assert(!r.ok); assert.equal(r.reason,"归属错误"); });
+    it("AC-3.5 — 被禁用的 CAConnection 数据被拒收", () => { const rp=seedRaceProject(); const cc=seedCAConnection({raceProjectId:rp.id,ingestionStatus:"connected",authenticityStatus:"verified",disabledAt:now()}); const ses=seedSession({caConnectionId:cc.id}); const r=caVerifier.canEnterSession(ses); assert(!r.ok); assert.equal(r.reason,"CAConnection 已被禁用"); });
+    it("AC-3.6 — 混合场景：部分有效、部分无效", () => { const rp=seedRaceProject(); const cc1=seedCAConnection({raceProjectId:rp.id,connectorId:"A",caProjectId:"P1",ingestionStatus:"connected",authenticityStatus:"verified",disabledAt:null}); const cc2=seedCAConnection({raceProjectId:rp.id,connectorId:"B",caProjectId:"P2",ingestionStatus:"connected",authenticityStatus:"verified",disabledAt:now()}); const s1=seedSession({caConnectionId:cc1.id,raceProjectId:rp.id,registrationId:rp.registrationId}); const s2=seedSession({caConnectionId:cc2.id,raceProjectId:rp.id,registrationId:rp.registrationId}); assert.ok(caVerifier.canEnterSession(s1).ok); assert(!caVerifier.canEnterSession(s2).ok); const h=stateMachine.computeConnectionHealth([cc1.ingestionStatus,"disabled"]); assert.equal(h,"partial_failed"); });
+  });
+
+  // --- AC-4 ---
+  describe("AC-4: DCR Desktop App 安全校验", (s) => {
+    let rp, cc;
+    function freshCC() { rp=seedRaceProject(); cc=seedCAConnection({raceProjectId:rp.id,registrationId:rp.registrationId,userId:rp.userId,raceId:rp.raceId,ingestionStatus:"connected",authenticityStatus:"verified",appInstanceId:"app-001",deviceKeyId:"key-001",deviceKeyFingerprint:"fp-001"}); caVerifier.registerDeviceKey("app-001","key-001"); }
+    function validMsg(o) { const body={event:"task_completed",taskId:"t1"}; const n=caVerifier.normalizeBody(body); return {appInstanceId:"app-001",deviceKeyId:"key-001",nonce:uid(),sequence:Math.floor(Math.random()*100000)+1000,timestamp:ts(-1000),caConnectionId:cc.id,messageId:uid(),idempotencyKey:uid(),schemaVersion:"ary.ca.riding_signal.v0.1",signature:{algorithm:"ecdsa-p256",bodyHash:simpleHash(n),value:"valid-sig-abcdef"},body,...o}; function simpleHash(s){let h=0;for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0} return h.toString(16)} }
+    it("AC-4.1 — 全量校验通过 → 数据进入有效链路", () => { freshCC(); const r=caVerifier.verifyMessage(validMsg()); assert.ok(r.passed); });
+    it("AC-4.2 — 签名不一致 → 进入隔离审计", () => { freshCC(); const r=caVerifier.verifyMessage(validMsg({signature:{algorithm:"ecdsa-p256",bodyHash:"bad-hash",value:"bad"}})); assert(!r.passed); assert.equal(stores.caQuarantineAudits.count(),1); });
+    it("AC-4.3 — nonce 重放 → 进入隔离审计", () => { freshCC(); const m=validMsg(); caVerifier.verifyMessage(m); const r=caVerifier.verifyMessage(m); assert(!r.passed); assert.equal(r.verificationResult,"nonce_replayed"); });
+    it("AC-4.4 — sequence 回退 → 进入隔离审计", () => { freshCC(); caVerifier.verifyMessage(validMsg({sequence:100})); const r=caVerifier.verifyMessage(validMsg({sequence:50})); assert(!r.passed); });
+    it("AC-4.5 — deviceKeyId 已撤销 → 进入隔离审计", () => { freshCC(); caVerifier.revokeDeviceKey("key-001"); const r=caVerifier.verifyMessage(validMsg()); assert(!r.passed); assert.equal(r.verificationResult,"key_revoked"); });
+    it("AC-4.6 — appInstanceId 未知 → 进入隔离审计", () => { freshCC(); const r=caVerifier.verifyMessage(validMsg({appInstanceId:"unknown"})); assert(!r.passed); assert.equal(r.verificationResult,"app_instance_unknown"); });
+    it("AC-4.7 — 校验失败消息的审计可见性", () => { freshCC(); caVerifier.verifyMessage(validMsg({appInstanceId:"unknown"})); const q=stores.caQuarantineAudits.all()[0]; const s=auth.quarantineSummaryFilter(q); assert.ok(s.failureReason); assert.equal(s.rawMessageMetadata,undefined); });
+  });
+
+  // --- AC-5 ---
+  describe("AC-5: CA 接入失败不阻断主流程", (s) => {
+    it("AC-5.1 — not_configured 时仍可提交 Work", () => { const reg=seedRegistration({status:"approved"}); const rp=seedRaceProject({registrationId:reg.id,aggregateIngestionStatus:"not_configured",connectionHealth:"no_signal"}); seedRace({id:rp.raceId,status:"running"}); const w=seedWork({registrationId:reg.id,raceId:rp.raceId,ownerUserId:reg.userId,status:"draft"}); const u=stores.works.update(w.id,{status:"submitted",submittedAt:now()}); assert.ok(u.ok); const f=stateMachine.generateReviewFlags(rp); assert.ok(f.find((x)=>x.flagType==="ca_unconfigured")); });
+    it("AC-5.2 — 全部 CAConnection failed 时仍可提交 Work", () => { const reg=seedRegistration({status:"approved"}); const rp=seedRaceProject({registrationId:reg.id,aggregateIngestionStatus:"failed",connectionHealth:"all_failed"}); seedRace({id:rp.raceId,status:"running"}); const w=seedWork({registrationId:reg.id,raceId:rp.raceId,ownerUserId:reg.userId,status:"draft"}); stores.works.update(w.id,{status:"submitted",submittedAt:now()}); const flags=stateMachine.generateReviewFlags(rp); assert.ok(flags.find((x)=>x.flagType==="ca_failed")); assert.equal(stores.registrations.get(reg.id).status,"approved"); });
+    it("AC-5.3 — CA 接入异常时仍可进入评审", () => { const reg=seedRegistration({status:"approved"}); const rp=seedRaceProject({registrationId:reg.id,aggregateIngestionStatus:"failed"}); seedRace({id:rp.raceId,status:"judging"}); const w=seedWork({registrationId:reg.id,raceId:rp.raceId,ownerUserId:reg.userId,status:"locked"}); const j=seedUser({roles:["judge"]}); const as=stores.judgeAssignments.insert({id:uid(),raceId:rp.raceId,workId:w.id,judgeUserId:j.id,assignedByUserId:uid(),status:"assigned",assignedAt:now(),completedAt:null,createdAt:now(),updatedAt:now(),version:1}); const rec=stores.judgingRecords.insert({id:uid(),judgeAssignmentId:as.record.id,workId:w.id,judgeUserId:j.id,scoreResult:{},scoreRiding:{},comments:"评审通过",status:"draft",submittedAt:null,createdAt:now(),updatedAt:now(),version:1}); assert.ok(rec.ok); stores.judgingRecords.update(rec.record.id,{status:"submitted",submittedAt:now()}); });
+    it("AC-5.4 — CA 接入异常时仍可颁发 Award", () => { const reg=seedRegistration({status:"approved"}); const rp=seedRaceProject({registrationId:reg.id,aggregateIngestionStatus:"failed"}); const aw=stores.awards.insert({id:uid(),raceId:rp.raceId,registrationId:reg.id,workId:null,awardName:"Best Effort",rank:1,decisionReason:"尽管 CA 未接入",status:"draft",publishedAt:null,createdAt:now(),updatedAt:now(),version:1}); assert.ok(aw.ok); const pub=stores.awards.update(aw.record.id,{status:"published",publishedAt:now()}); assert.ok(pub.ok); });
+    it("AC-5.5 — 风险提示生成验证", () => { const rp=seedRaceProject({aggregateIngestionStatus:"not_configured",connectionHealth:"no_signal"}); const f=stateMachine.generateReviewFlags(rp); assert.ok(f.length>0); assert.equal(f[0].flagType,"ca_unconfigured"); assert.equal(f[0].resolved,false); });
+    it("AC-5.6 — 部分 CAConnection 正常时风险提示降级", () => { const rp=seedRaceProject({aggregateIngestionStatus:"active",connectionHealth:"partial_failed"}); const f=stateMachine.generateReviewFlags(rp); assert.ok(f.filter((x)=>x.flagType==="ca_failed").length>0); assert(!f.find((x)=>x.flagType==="ca_unconfigured")); });
+    it("AC-5.7 — CA 接入状态不得驱动 Registration 进入 withdrawn", () => { const reg=seedRegistration({status:"approved"}); seedRaceProject({registrationId:reg.id,aggregateIngestionStatus:"failed"}); assert.ok(stateMachine.registrationCanTransition("approved","withdrawn").ok); const blocked=stateMachine.registrationCanTransition("submitted","withdrawn"); assert(!blocked.ok); assert.match(blocked.reason,/不驱动/); assert.equal(stores.registrations.get(reg.id).status,"approved"); });
+  });
+
+  // --- State Machine ---
+  describe("状态机", (s) => {
+    it("Race: draft → published → registration → running", () => { assert.ok(stateMachine.raceCanTransition("draft","published").ok); assert.ok(stateMachine.raceCanTransition("published","registration").ok); assert.ok(stateMachine.raceCanTransition("registration","running").ok); });
+    it("Race: 禁止 completed → judging 回退", () => { const r=stateMachine.raceCanTransition("completed","judging"); assert(!r.ok); assert.match(r.reason,/回退/); });
+    it("Race: 禁止跳过 published 直接进入 registration", () => { assert(!stateMachine.raceCanTransition("draft","registration").ok); });
+    it("Registration: submitted → approved → withdrawn", () => { assert.ok(stateMachine.registrationCanTransition("submitted","approved").ok); assert.ok(stateMachine.registrationCanTransition("approved","withdrawn").ok); });
+    it("Work: draft → submitted → locked", () => { assert.ok(stateMachine.workCanTransition("draft","submitted").ok); assert.ok(stateMachine.workCanTransition("submitted","locked").ok); });
+    it("Work: 禁止 locked → draft", () => { assert(!stateMachine.workCanTransition("locked","draft").ok); });
+    it("JudgingRecord: draft → submitted", () => { assert.ok(stateMachine.judgingCanTransition("draft","submitted").ok); });
+    it("JudgingRecord: 禁止 submitted → draft", () => { assert(!stateMachine.judgingCanTransition("submitted","draft").ok); });
+    it("Award: draft → published → withdrawn", () => { assert.ok(stateMachine.awardCanTransition("draft","published").ok); assert.ok(stateMachine.awardCanTransition("published","withdrawn").ok); });
+    it("Award: 禁止 published → draft", () => { assert(!stateMachine.awardCanTransition("published","draft").ok); });
+    it("RaceProject ingestion: not_configured → connected → active → failed → connected", () => { assert.ok(stateMachine.rpIngestionCanTransition("not_configured","connected").ok); assert.ok(stateMachine.rpIngestionCanTransition("connected","active").ok); assert.ok(stateMachine.rpIngestionCanTransition("active","failed").ok); assert.ok(stateMachine.rpIngestionCanTransition("failed","connected").ok); });
+    it("computeConnectionHealth: no_signal → ok → partial_failed → all_failed", () => { assert.equal(stateMachine.computeConnectionHealth([]),"no_signal"); assert.equal(stateMachine.computeConnectionHealth(["connected"]),"ok"); assert.equal(stateMachine.computeConnectionHealth(["active","failed"]),"partial_failed"); assert.equal(stateMachine.computeConnectionHealth(["failed","failed"]),"all_failed"); });
+  });
+
+  // --- Auth ---
+  describe("鉴权作用域", (s) => {
+    it("ownGate — User 只能访问自己的资源", () => { const u=seedUser({roles:["rider"]}); assert.ok(auth.ownGate({userId:u.id},u)); assert(!auth.ownGate({userId:uid()},u)); });
+    it("assignedGate — Judge 只能访问已分配的作品", () => { const j=seedUser({roles:["judge"]}); const w=seedWork(); assert(!auth.assignedGate(w.id,j)); stores.judgeAssignments.insert({id:uid(),raceId:uid(),workId:w.id,judgeUserId:j.id,assignedByUserId:uid(),status:"assigned",assignedAt:now(),completedAt:null,createdAt:now(),updatedAt:now(),version:1}); assert.ok(auth.assignedGate(w.id,j)); });
+    it("managedRaceGate — Organizer 只能管理自己的 Race", () => { const o=seedUser({roles:["organizer"]}); const r=seedRace({organizerUserIds:[o.id],createdByUserId:o.id}); assert.ok(auth.managedRaceGate({raceId:r.id},o)); assert(!auth.managedRaceGate({raceId:uid()},o)); });
+    it("adminGate — Admin 拥有 system 权限", () => { const a=seedUser({roles:["admin"]}); const u=seedUser({roles:["rider"]}); assert.ok(auth.adminGate(a)); assert(!auth.adminGate(u)); });
+  });
+
+  // ================ RUNNER ================
+  function resetAll() { resetAllStores(); resetKeys(); renderGroups(); updateSummary(); }
+
+  let results = [];
+  function renderGroups() {
+    const el = document.getElementById("results");
+    el.innerHTML = suites.map((g, gi) =>
+      `<div class="group"><div class="group-title">${g.title}</div>` +
+      g.tests.map((t, ti) => {
+        const r = results[gi]?.[ti];
+        const cls = r ? (r.pass ? "pass" : "fail") : "pending";
+        const icon = r ? (r.pass ? "✓" : "✗") : "—";
+        const msg = r && !r.pass ? `<div class="msg">${r.error || ""}</div>` : "";
+        const dur = r ? `<span class="dur">${r.dur.toFixed(1)}ms</span>` : "";
+        return `<div class="test-row ${cls}" id="test-${gi}-${ti}"><span class="icon">${icon}</span><span class="name">${t.title}</span>${dur}${msg}</div>`;
+      }).join("") + `</div>`
+    ).join("");
+  }
+
+  function updateSummary() {
+    let total=0, pass=0, fail=0;
+    for (const g of results) for (const t of (g || [])) { total++; if (t.pass) pass++; else fail++; }
+    document.getElementById("summary").innerHTML = `
+      <div class="summary-card"><b>${total}</b><span>总计</span></div>
+      <div class="summary-card pass"><b>${pass}</b><span>通过</span></div>
+      <div class="summary-card fail"><b>${fail}</b><span>失败</span></div>
+      <div class="summary-card"><b>${total?((pass/total*100).toFixed(0)):0}%</b><span>通过率</span></div>`;
+  }
+
+  async function runAll() {
+    resetAll();
+    results = [];
+    renderGroups();
+    updateSummary();
+
+    for (let gi = 0; gi < suites.length; gi++) {
+      results[gi] = [];
+      const group = suites[gi];
+      for (let ti = 0; ti < group.tests.length; ti++) {
+        const test = group.tests[ti];
+        const el = document.getElementById(`test-${gi}-${ti}`);
+        if (el) { el.className = "test-row running"; el.querySelector(".icon").textContent = "◌"; }
+
+        const start = performance.now();
+        let pass = true, error = "";
+        try {
+          test.fn();
+        } catch (e) {
+          pass = false;
+          error = e.message || String(e);
+        }
+        const dur = performance.now() - start;
+        results[gi][ti] = { pass, dur, error };
+
+        if (el) {
+          el.className = "test-row " + (pass ? "pass" : "fail");
+          el.querySelector(".icon").textContent = pass ? "✓" : "✗";
+          if (!pass) el.innerHTML += `<div class="msg">${error}</div>`;
+          const durEl = el.querySelector(".dur");
+          if (durEl) durEl.textContent = dur.toFixed(1) + "ms";
+          else el.innerHTML += `<span class="dur">${dur.toFixed(1)}ms</span>`;
+        }
+        await new Promise((r) => setTimeout(r, 1));
+        updateSummary();
+      }
+    }
+  }
+
+  // Init
+  resetAll();
+  renderGroups();
+  updateSummary();
+</script>
+</body>
+</html>

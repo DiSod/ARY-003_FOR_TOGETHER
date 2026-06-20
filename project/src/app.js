@@ -1,0 +1,403 @@
+// Express API server — the real application backbone.
+// Replaces the static-only server.js. Connects sql.js DB, mounts REST routes,
+// serves the public/ directory as static frontend.
+
+import express from "express";
+import cors from "cors";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { initDB, seedDemo, all, get, run, insert, update, save, uid, now } from "./db.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = path.join(__dirname, "..", "public");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Root → home page (data-driven public gallery)
+app.get("/", (_req, res) => res.sendFile(path.join(publicDir, "home.html")));
+
+// Static files (after explicit routes)
+app.use(express.static(publicDir));
+
+// ==================== Auth Routes ====================
+
+// POST /api/auth/login — demo login (returns user + token placeholder)
+app.post("/api/auth/login", (req, res) => {
+  const { githubAccountId } = req.body;
+  const user = get("SELECT * FROM users WHERE github_account_id = ?", [githubAccountId]);
+  if (!user) {
+    return res.status(404).json({ error: "用户不存在" });
+  }
+  // Parse JSON fields
+  user.roles = JSON.parse(user.roles || "[]");
+  user.profile = JSON.parse(user.profile || "{}");
+  res.json({ user, token: `demo-token-${user.id}` });
+});
+
+// GET /api/auth/users — list all users
+app.get("/api/auth/users", (_req, res) => {
+  const users = all("SELECT * FROM users ORDER BY created_at DESC");
+  res.json(users.map(parseUser));
+});
+
+// ==================== Race Routes ====================
+
+// GET /api/races — public race list
+app.get("/api/races", (_req, res) => {
+  const races = all("SELECT * FROM races ORDER BY created_at DESC");
+  res.json(
+    races.map((r) => ({
+      ...r,
+      time_windows: JSON.parse(r.time_windows || "{}"),
+      award_settings: JSON.parse(r.award_settings || "[]"),
+      organizer_user_ids: JSON.parse(r.organizer_user_ids || "[]"),
+      // Count registrations
+      registration_count: all(
+        "SELECT COUNT(*) as count FROM registrations WHERE race_id = ?",
+        [r.id],
+      )[0]?.count || 0,
+    })),
+  );
+});
+
+// GET /api/races/:slug — single race detail
+app.get("/api/races/:slug", (req, res) => {
+  const race = get("SELECT * FROM races WHERE slug = ?", [req.params.slug]);
+  if (!race) return res.status(404).json({ error: "赛事不存在" });
+  race.time_windows = JSON.parse(race.time_windows || "{}");
+  race.award_settings = JSON.parse(race.award_settings || "[]");
+  race.organizer_user_ids = JSON.parse(race.organizer_user_ids || "[]");
+
+  const registrations = all("SELECT * FROM registrations WHERE race_id = ?", [race.id]);
+  const works = all("SELECT w.* FROM works w JOIN registrations r ON w.registration_id = r.id WHERE r.race_id = ?", [race.id]);
+  const awards = all("SELECT * FROM awards WHERE race_id = ? AND status = 'published'", [race.id]);
+
+  res.json({
+    ...race,
+    registration_count: registrations.length,
+    work_count: works.length,
+    awards: awards.map(parseAward),
+    works: works.map(parseWork),
+  });
+});
+
+// GET /api/races/:slug/works — race works
+app.get("/api/races/:slug/works", (req, res) => {
+  const race = get("SELECT * FROM races WHERE slug = ?", [req.params.slug]);
+  if (!race) return res.status(404).json({ error: "赛事不存在" });
+
+  const works = all(
+    `SELECT w.*, u.display_name as author_name, u.slug as author_slug
+     FROM works w
+     JOIN registrations r ON w.registration_id = r.id
+     JOIN users u ON w.owner_user_id = u.id
+     WHERE r.race_id = ?
+     ORDER BY w.submitted_at DESC`,
+    [race.id],
+  );
+  res.json(works.map(parseWork));
+});
+
+// GET /api/races/:slug/results — race results
+app.get("/api/races/:slug/results", (req, res) => {
+  const race = get("SELECT * FROM races WHERE slug = ?", [req.params.slug]);
+  if (!race) return res.status(404).json({ error: "赛事不存在" });
+
+  const awards = all(
+    `SELECT a.*, u.display_name as rider_name, w.title as work_title
+     FROM awards a
+     LEFT JOIN users u ON (SELECT user_id FROM registrations WHERE id = a.registration_id) = u.id
+     LEFT JOIN works w ON a.work_id = w.id
+     WHERE a.race_id = ? AND a.status = 'published'
+     ORDER BY a.rank ASC`,
+    [race.id],
+  );
+  res.json(awards.map(parseAward));
+});
+
+// ==================== Registration Routes ====================
+
+// POST /api/registrations — submit registration
+app.post("/api/registrations", (req, res) => {
+  const { raceId, userId } = req.body;
+  if (!raceId || !userId) return res.status(400).json({ error: "raceId 和 userId 必填" });
+
+  const race = get("SELECT * FROM races WHERE id = ?", [raceId]);
+  if (!race) return res.status(404).json({ error: "赛事不存在" });
+
+  // Check unique constraint
+  const existing = get("SELECT * FROM registrations WHERE race_id = ? AND user_id = ?", [
+    raceId,
+    userId,
+  ]);
+  if (existing) {
+    return res.status(409).json({ error: "您已报名此赛事", constraintKey: `${raceId}::${userId}` });
+  }
+
+  const t = now();
+  const id = uid();
+  run(
+    `INSERT INTO registrations (id, race_id, user_id, status, submitted_at, review_flags, created_at, updated_at)
+     VALUES (?, ?, ?, 'submitted', ?, '[]', ?, ?)`,
+    [id, raceId, userId, t, t, t],
+  );
+  save();
+
+  res.status(201).json({ id, status: "submitted" });
+});
+
+// PUT /api/registrations/:id/approve — approve registration
+app.put("/api/registrations/:id/approve", (req, res) => {
+  const reg = get("SELECT * FROM registrations WHERE id = ?", [req.params.id]);
+  if (!reg) return res.status(404).json({ error: "报名不存在" });
+
+  if (reg.status === "approved") {
+    // Idempotent: ensure RaceProject exists
+    const rp = get("SELECT * FROM race_projects WHERE registration_id = ?", [reg.id]);
+    return res.json({
+      ok: true,
+      registration_id: reg.id,
+      race_project_id: rp?.id,
+      reason: "RaceProject 已存在（幂等跳过）",
+    });
+  }
+
+  const t = now();
+  const approvedBy = req.body.approvedByUserId || "system";
+
+  // Update registration
+  update("registrations", reg.id, {
+    status: "approved",
+    approved_at: t,
+    approved_by_user_id: approvedBy,
+    updated_at: t,
+  });
+
+  // Create RaceProject
+  const rpId = uid();
+  run(
+    `INSERT OR IGNORE INTO race_projects (id, registration_id, race_id, user_id, aggregate_ingestion_status, connection_health, authenticity_summary, review_flags, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'not_configured', 'no_signal', '{}', '[]', ?, ?)`,
+    [rpId, reg.id, reg.race_id, reg.user_id, t, t],
+  );
+  save();
+
+  res.json({
+    ok: true,
+    registration_id: reg.id,
+    race_project_id: rpId,
+  });
+});
+
+// GET /api/registrations?userId=X — user's registrations
+app.get("/api/registrations", (req, res) => {
+  const { userId, raceId } = req.query;
+  let sql = "SELECT * FROM registrations WHERE 1=1";
+  const params = [];
+  if (userId) {
+    sql += " AND user_id = ?";
+    params.push(userId);
+  }
+  if (raceId) {
+    sql += " AND race_id = ?";
+    params.push(raceId);
+  }
+  const regs = all(sql, params);
+  res.json(regs.map((r) => ({ ...r, review_flags: JSON.parse(r.review_flags || "[]") })));
+});
+
+// ==================== Work Routes ====================
+
+// POST /api/works — create/submit work
+app.post("/api/works", (req, res) => {
+  const { registrationId, title, summary, description, repoUrl } = req.body;
+  if (!registrationId || !title) return res.status(400).json({ error: "registrationId 和 title 必填" });
+
+  const reg = get("SELECT * FROM registrations WHERE id = ?", [registrationId]);
+  if (!reg) return res.status(404).json({ error: "报名不存在" });
+
+  // Check unique constraint (MVP: 1 work per registration)
+  const existing = get("SELECT * FROM works WHERE registration_id = ?", [registrationId]);
+  if (existing) return res.status(409).json({ error: "该报名已有作品（MVP 限制一个作品）" });
+
+  const t = now();
+  const workId = uid();
+  run(
+    `INSERT INTO works (id, registration_id, race_id, owner_user_id, title, summary, description, repo_url, status, submitted_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, ?, ?)`,
+    [workId, registrationId, reg.race_id, reg.user_id, title, summary || "", description || "", repoUrl || null, t, t, t],
+  );
+  save();
+
+  res.status(201).json({ id: workId, status: "submitted" });
+});
+
+// GET /api/works — list works (with optional filter)
+app.get("/api/works", (req, res) => {
+  const { raceId } = req.query;
+  let sql =
+    "SELECT w.*, u.display_name as author_name FROM works w JOIN users u ON w.owner_user_id = u.id WHERE 1=1";
+  const params = [];
+  if (raceId) {
+    sql += " AND w.race_id = ?";
+    params.push(raceId);
+  }
+  sql += " ORDER BY w.submitted_at DESC";
+  res.json(all(sql, params).map(parseWork));
+});
+
+// ==================== CA Routes ====================
+
+// GET /api/ca-connections?raceProjectId=X
+app.get("/api/ca-connections", (req, res) => {
+  const { raceProjectId } = req.query;
+  const conns = raceProjectId
+    ? all("SELECT * FROM ca_connections WHERE race_project_id = ?", [raceProjectId])
+    : all("SELECT * FROM ca_connections ORDER BY created_at DESC");
+  res.json(conns);
+});
+
+// POST /api/ca-connections — register a CA connection
+app.post("/api/ca-connections", (req, res) => {
+  const { raceProjectId, connectorId, caProjectId, caType } = req.body;
+  if (!raceProjectId || !connectorId) return res.status(400).json({ error: "raceProjectId 和 connectorId 必填" });
+
+  const rp = get("SELECT * FROM race_projects WHERE id = ?", [raceProjectId]);
+  if (!rp) return res.status(404).json({ error: "RaceProject 不存在" });
+
+  const t = now();
+  const id = uid();
+  try {
+    run(
+      `INSERT INTO ca_connections (id, race_project_id, registration_id, race_id, user_id, ca_type, connector_id, ca_project_id, ingestion_status, authenticity_status, registered_at, last_handshake_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'connected', 'verified', ?, ?, ?, ?)`,
+      [
+        id,
+        raceProjectId,
+        rp.registration_id,
+        rp.race_id,
+        rp.user_id,
+        caType || "codex",
+        connectorId,
+        caProjectId || null,
+        t,
+        t,
+        t,
+        t,
+      ],
+    );
+    save();
+    res.status(201).json({ id, ingestionStatus: "connected" });
+  } catch (e) {
+    res.status(409).json({ error: "CAConnection 唯一键冲突: " + e.message });
+  }
+});
+
+// POST /api/ca-verify — CA message verification
+app.post("/api/ca-verify", (req, res) => {
+  const { caConnectionId, message } = req.body;
+  if (!caConnectionId || !message) return res.status(400).json({ error: "caConnectionId 和 message 必填" });
+
+  // Import the verifier (uses in-memory stores for verification logic)
+  import("./ca-verifier.js").then(({ verifyMessage }) => {
+    const result = verifyMessage({ ...message, caConnectionId });
+    save();
+    res.json(result);
+  }).catch((err) => {
+    res.status(500).json({ error: "验签模块加载失败: " + err.message });
+  });
+});
+
+// ==================== RaceProject Routes ====================
+
+// GET /api/race-projects?registrationId=X
+app.get("/api/race-projects", (req, res) => {
+  const { registrationId, userId } = req.query;
+  let sql = "SELECT * FROM race_projects WHERE 1=1";
+  const params = [];
+  if (registrationId) { sql += " AND registration_id = ?"; params.push(registrationId); }
+  if (userId) { sql += " AND user_id = ?"; params.push(userId); }
+  res.json(all(sql, params).map((rp) => ({
+    ...rp,
+    authenticity_summary: JSON.parse(rp.authenticity_summary || "{}"),
+    review_flags: JSON.parse(rp.review_flags || "[]"),
+  })));
+});
+
+// ==================== Dashboard / Stats ====================
+
+// GET /api/stats — aggregate stats for homepage
+app.get("/api/stats", (_req, res) => {
+  const raceCount = all("SELECT COUNT(*) as count FROM races")[0]?.count || 0;
+  const liveRace = get("SELECT * FROM races WHERE status IN ('running','submitting','judging') ORDER BY created_at DESC LIMIT 1");
+  const completedRaceCount = all("SELECT COUNT(*) as count FROM races WHERE status = 'completed'")[0]?.count || 0;
+  const riderCount = all("SELECT COUNT(DISTINCT user_id) as count FROM registrations")[0]?.count || 0;
+  const workCount = all("SELECT COUNT(*) as count FROM works WHERE status = 'submitted'")[0]?.count || 0;
+
+  res.json({
+    total_races: raceCount,
+    live_race: liveRace ? { slug: liveRace.slug, title: liveRace.title, status: liveRace.status } : null,
+    completed_races: completedRaceCount,
+    total_riders: riderCount,
+    total_works: workCount,
+  });
+});
+
+// ==================== Helpers ====================
+
+let _jsonFieldsCache = null;
+function getJsonFields() {
+  if (!_jsonFieldsCache) {
+    _jsonFieldsCache = {
+      user: ["roles", "profile"],
+      race: ["time_windows", "award_settings", "organizer_user_ids"],
+      registration: ["review_flags"],
+      race_project: ["authenticity_summary", "review_flags"],
+      session: ["metrics"],
+      judging_record: ["score_result", "score_riding"],
+      evidence: ["source_ref", "tags"],
+      report: ["generated_from"],
+      session_summary: ["metrics", "capability_tags"],
+      award: [],
+      ca_connection: [],
+      work: [],
+    };
+  }
+  return _jsonFieldsCache;
+}
+
+function parseUser(u) {
+  return { ...u, roles: JSON.parse(u.roles || "[]"), profile: JSON.parse(u.profile || "{}") };
+}
+
+function parseWork(w) {
+  return w;
+}
+
+function parseAward(a) {
+  return a;
+}
+
+// ==================== Init & Start ====================
+
+async function start() {
+  await initDB();
+
+  // Auto-seed demo data if empty
+  const raceCount = all("SELECT COUNT(*) as count FROM races")[0]?.count || 0;
+  if (raceCount === 0) {
+    seedDemo();
+  }
+
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`\n  ARY MVP — API Server Ready`);
+    console.log(`  → http://localhost:${PORT}`);
+    console.log(`  → API:   http://localhost:${PORT}/api/races`);
+    console.log(`  → Stats: http://localhost:${PORT}/api/stats\n`);
+  });
+}
+
+export { app, start };
