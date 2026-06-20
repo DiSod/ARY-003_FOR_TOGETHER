@@ -82,9 +82,9 @@
                 <h3 style="font-size:17px;margin-bottom:4px">${esc(w.title)}</h3>
                 <p style="font-size:14px;color:var(--muted)">${esc(w.summary || "暂无描述")}</p>
                 ${w.description ? `<p style="font-size:13px;color:var(--muted);margin-top:8px;line-height:1.5">${esc(w.description.slice(0,200))}${w.description.length>200?'...':''}</p>` : ""}
-                <div style="margin-top:10px;font-size:13px;color:var(--muted)">👤 ${esc(w.author_name || "匿名")} · ${esc(w.status)}</div>
+                <div style="margin-top:10px;font-size:13px;color:var(--muted)">👤 ${esc(w.author_name || "匿名")} · ${{submitted:'已提交',draft:'草稿',locked:'已锁定'}[w.status]||w.status}</div>
               </div>
-              <span class="badge ${w.status==='submitted'?'badge-live':'badge-draft'}">${w.status}</span>
+              <span class="badge ${w.status==='submitted'?'badge-live':'badge-draft'}">${{submitted:'已提交',draft:'草稿',locked:'已锁定'}[w.status]||w.status}</span>
             </div>
           </div>
         </div>

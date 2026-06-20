@@ -47,7 +47,7 @@
     }
 
     function statusLabel(s) {
-      const map = { draft:"草稿", published:"已发布", registration:"报名中", running:"进行中", submitting:"提交中", judging:"评审中", completed:"已结束", archived:"已归档" };
+      const map = { draft:"草稿", published:"已发布", registration:"报名中", running:"进行中", submitting:"提交中", judging:"评审中", completed:"已结束", archived:"已归档", submitted:"已提交", locked:"已锁定" };
       return map[s] || s;
     }
 
@@ -56,12 +56,20 @@
 
     function render(race) {
       const tw = race.time_windows || {};
+      // CTA button based on race status
+      let ctaHtml = '';
+      if (race.status === 'registration') {
+        ctaHtml = `<a href="/console" class="btn btn-primary" style="display:inline-block;margin-top:12px;padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--blue-800),var(--blue-500));color:#fff;font-size:15px;font-weight:900;cursor:pointer;text-decoration:none;">📝 立即报名</a>`;
+      } else if (['running','submitting','judging'].includes(race.status)) {
+        ctaHtml = `<a href="/console" class="btn btn-primary" style="display:inline-block;margin-top:12px;padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--blue-800),var(--blue-500));color:#fff;font-size:15px;font-weight:900;cursor:pointer;text-decoration:none;">🔴 进入 Live Hall</a>`;
+      }
       document.getElementById("app").innerHTML = `
         <div class="race-detail-header">
           <span class="badge badge-${["running","submitting","judging"].includes(race.status)?"live":race.status==="registration"?"registration":race.status==="completed"?"completed":"draft"}">${statusLabel(race.status)}</span>
           <h1>${esc(race.title)}</h1>
           <p style="color:var(--muted);font-size:15px;margin:8px 0 16px">${esc(race.challenge_brief)}</p>
-          <div class="tl-row">
+          ${ctaHtml}
+          <div class="tl-row" style="margin-top:16px">
             <div class="tl-item"><strong>报名</strong> ${fmt(tw.registration_start)} ~ ${fmt(tw.registration_end)}</div>
             <div class="tl-item"><strong>比赛</strong> ${fmt(tw.race_start)} ~ ${fmt(tw.race_end)}</div>
             ${tw.submission_deadline ? `<div class="tl-item"><strong>提交截止</strong> ${fmt(tw.submission_deadline)}</div>` : ""}
@@ -81,7 +89,7 @@
                 <h3>${esc(w.title)}</h3>
                 <p>${esc(w.summary || "暂无摘要")}</p>
               </div>
-              <span class="badge ${w.status==='submitted'?'badge-live':'badge-draft'}">${w.status}</span>
+              <span class="badge ${w.status==='submitted'?'badge-live':'badge-draft'}">${statusLabel(w.status)}</span>
             </div>`).join("")}</div>`}
 
         <!-- Awards (if completed) -->
