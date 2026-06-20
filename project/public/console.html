@@ -213,24 +213,33 @@ const App = {
   raceProjects: [],
   works: [],
   caConnections: [],
+  judgeAssignments: [],
+  judgingRecords: [],
+  awards: [],
   wsTab: 'overview',
 };
 
 // ====== Init ======
 async function init() {
   try {
-    const [racesRes, usersRes, regsRes, rpRes, worksRes] = await Promise.all([
+    const [racesRes, usersRes, regsRes, rpRes, worksRes, jaRes, jrRes, awRes] = await Promise.all([
       fetch('/api/races'),
       fetch('/api/auth/users'),
       fetch('/api/registrations'),
       fetch('/api/race-projects'),
       fetch('/api/works'),
+      fetch('/api/judge-assignments'),
+      fetch('/api/judging-records'),
+      fetch('/api/awards'),
     ]);
     App.races = await racesRes.json();
     App.users = await usersRes.json();
     App.registrations = await regsRes.json();
     App.raceProjects = await rpRes.json();
     App.works = await worksRes.json();
+    App.judgeAssignments = await jaRes.json();
+    App.judgingRecords = await jrRes.json();
+    try { App.awards = await awRes.json(); } catch(e) { App.awards = []; }
 
     // Check session
     const saved = sessionStorage.getItem('ary_console_user');
@@ -371,6 +380,7 @@ async function openWorkspace(raceId) {
   const u = App.currentUser;
   const isOrg = u&&(u.roles.includes('organizer')||u.roles.includes('admin'))&&(race.organizer_user_ids||[]).includes(u.id);
   const isRider = u&&u.roles.includes('rider');
+  const isJudge = u&&u.roles.includes('judge');
 
   // Fetch fresh data
   const regsRes = await fetch('/api/registrations');
@@ -379,6 +389,10 @@ async function openWorkspace(raceId) {
   App.raceProjects = await rpRes.json();
   const worksRes = await fetch('/api/works');
   App.works = await worksRes.json();
+  const jaRes = await fetch('/api/judge-assignments');
+  App.judgeAssignments = await jaRes.json();
+  const jrRes = await fetch('/api/judging-records');
+  App.judgingRecords = await jrRes.json();
 
   document.getElementById('workspace-top').innerHTML = `
     <div class="breadcrumb"><a onclick="navigate('home')">Console Home</a> / ${race.title}</div>
@@ -389,6 +403,8 @@ async function openWorkspace(raceId) {
   if (isOrg) {
     tabs.innerHTML = `<button class="sidebar-item active" onclick="switchWorkspaceTab('overview')" data-ws-tab="overview">📊 概览</button>
       <button class="sidebar-item" onclick="switchWorkspaceTab('registrations')" data-ws-tab="registrations">📋 报名管理</button>
+      <button class="sidebar-item" onclick="switchWorkspaceTab('judges')" data-ws-tab="judges">👥 评委管理</button>
+      <button class="sidebar-item" onclick="switchWorkspaceTab('awards')" data-ws-tab="awards">🏆 奖项发布</button>
       <button class="sidebar-item" onclick="switchWorkspaceTab('create-race')" data-ws-tab="create-race">➕ 创建赛事</button>`;
     App.wsTab = 'overview';
     switchWorkspaceTab('overview');
@@ -399,6 +415,11 @@ async function openWorkspace(raceId) {
       <button class="sidebar-item" onclick="switchWorkspaceTab('rider-work')" data-ws-tab="rider-work">📦 作品</button>`;
     App.wsTab = 'rider-overview';
     switchWorkspaceTab('rider-overview');
+  } else if (isJudge) {
+    tabs.innerHTML = `<button class="sidebar-item active" onclick="switchWorkspaceTab('judge-works')" data-ws-tab="judge-works">⚖️ 待评审</button>
+      <button class="sidebar-item" onclick="switchWorkspaceTab('judge-done')" data-ws-tab="judge-done">✅ 已评审</button>`;
+    App.wsTab = 'judge-works';
+    switchWorkspaceTab('judge-works');
   } else {
     tabs.innerHTML = '';
     document.getElementById('workspace-content').innerHTML = '<div class="empty-state">你无权查看此赛事的工作台</div>';
@@ -417,18 +438,24 @@ function renderWorkspaceTab() {
   const u = App.currentUser;
   const isOrg = u&&(u.roles.includes('organizer')||u.roles.includes('admin'));
   const isRider = u&&u.roles.includes('rider');
+  const isJudge = u&&u.roles.includes('judge');
   const container = document.getElementById('workspace-content');
   hideFeedback();
 
   if (isOrg) {
     if (App.wsTab === 'overview') container.innerHTML = renderOrgOverview(race);
     else if (App.wsTab === 'registrations') container.innerHTML = renderOrgRegistrations(race);
+    else if (App.wsTab === 'judges') container.innerHTML = renderOrgJudges(race);
+    else if (App.wsTab === 'awards') container.innerHTML = renderOrgAwards(race);
     else if (App.wsTab === 'create-race') container.innerHTML = renderCreateRaceForm();
   } else if (isRider) {
     const reg = App.registrations.find(r=>r.race_id===race.id&&r.user_id===u.id);
     if (App.wsTab === 'rider-overview') container.innerHTML = renderRiderOverview(race, reg);
     else if (App.wsTab === 'rider-ca') container.innerHTML = renderRiderCA(race, reg);
     else if (App.wsTab === 'rider-work') container.innerHTML = renderRiderWork(race, reg);
+  } else if (isJudge) {
+    if (App.wsTab === 'judge-works') container.innerHTML = renderJudgeWorks(race);
+    else if (App.wsTab === 'judge-done') container.innerHTML = renderJudgeDone(race);
   }
 }
 
@@ -464,7 +491,7 @@ function renderOrgRegistrations(race) {
         <div class="info-row"><span class="label">GitHub</span><span class="value">${user?.github_account_id||'-'}</span></div>
         <div class="info-row"><span class="label">报名时间</span><span class="value">${reg.submitted_at?new Date(reg.submitted_at).toLocaleString('zh-CN'):'-'}</span></div>
         ${rp?`<div class="info-row"><span class="label">RaceProject</span><span class="value">${rp.aggregate_ingestion_status} (${rp.connection_health})</span></div>`:''}
-        ${reg.status==='submitted'?`<div class="action-bar" style="margin-top:10px;"><button class="primary" onclick="doApprove('${reg.id}')">✅ 通过报名</button></div>`:''}
+        ${reg.status==='submitted'?`<div class="action-bar" style="margin-top:10px;"><button class="primary" onclick="doApprove('${reg.id}')">✅ 通过</button><button class="danger" onclick="doReject('${reg.id}')">❌ 拒绝</button></div>`:''}
         ${reg.review_flags&&reg.review_flags.length?`<div class="review-flags">⚠ ${reg.review_flags.map(f=>f.flagType||f).join(', ')}</div>`:''}
       </div>`;
     }).join('')}
@@ -504,6 +531,160 @@ async function doCreateRace() {
     // Select the new race
     const newRace = App.races.find(r=>r.slug===slug);
     if (newRace) openWorkspace(newRace.id);
+  } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
+}
+
+async function doReject(regId) {
+  const reason = prompt('请输入拒绝原因:');
+  if (reason === null) return;
+  try {
+    const res = await fetch(`/api/registrations/${regId}/reject`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reason:reason||'主办方拒绝'}) });
+    const data = await res.json();
+    if (data.ok) { showFeedback('ok', `✅ 已拒绝该报名`); refreshData(); }
+    else showFeedback('error', `❌ ${data.error||'操作失败'}`);
+  } catch(e) { showFeedback('error', `请求失败: ${e.message}`); }
+}
+
+// ===================== ORGANIZER: JUDGE MANAGEMENT =====================
+
+function renderOrgJudges(race) {
+  const users = App.users;
+  const judges = users.filter(u=> (u.roles||[]).includes('judge'));
+  const works = App.works.filter(w=>w.race_id===race.id);
+  const assignments = (App.judgeAssignments||[]).filter(ja=>ja.race_id===race.id);
+
+  return `<div class="workspace-panels">
+    <div class="info-card" style="max-width:100%;"><h4>👥 评委列表</h4>
+      ${judges.length===0?'<div style="color:var(--muted);font-size:13px;padding:8px 0;">暂无评委用户</div>'
+      :`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">${judges.map(j=>`<span class="status-tag approved" style="padding:6px 12px;font-size:13px;">${j.display_name}</span>`).join('')}</div>`}
+    </div>
+    <div class="info-card" style="max-width:100%;"><h4>📋 分配评委</h4>
+      ${works.length===0?'<div style="color:var(--muted);font-size:13px;padding:8px 0;">暂无作品可分配</div>'
+      :`<div style="display:grid;gap:10px;">${works.map(w => {
+        const assigned = assignments.filter(a=>a.work_id===w.id);
+        return `<div style="padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><b>${w.title}</b><span style="font-size:12px;color:var(--muted);">${assigned.length} 位评委</span></div>
+          ${assigned.length>0?`<div style="margin-bottom:6px;font-size:12px;color:var(--blue-700);">${assigned.map(a=>{const ju=users.find(u=>u.id===a.judge_user_id); return ju?ju.display_name:'?'}).join(', ')}</div>`:''}
+          <select id="judge-select-${w.id}" style="padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;">
+            <option value="">选择评委...</option>
+            ${judges.map(j=>`<option value="${j.id}">${j.display_name}</option>`).join('')}
+          </select>
+          <button class="primary" style="min-height:28px;padding:0 10px;font-size:11px;margin-left:6px;" onclick="doAssignJudge('${race.id}','${w.id}')">分配</button>
+        </div>`;
+      }).join('')}</div>`}
+    </div>
+    <div class="info-card" style="max-width:100%;"><h4>📊 评审进度</h4>
+      <div class="info-row"><span class="label">作品</span><span class="value">${works.length}</span></div>
+      <div class="info-row"><span class="label">已分配</span><span class="value">${assignments.length}</span></div>
+      <div class="info-row"><span class="label">已完成</span><span class="value">${assignments.filter(a=>a.status==='completed').length}</span></div>
+    </div>
+  </div>`;
+}
+
+async function doAssignJudge(raceId, workId) {
+  const sel = document.getElementById(`judge-select-${workId}`);
+  if (!sel||!sel.value) { showFeedback('error','请选择评委'); return; }
+  try {
+    const res = await fetch('/api/judge-assignments', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({raceId, workId, judgeUserId:sel.value, assignedByUserId:App.currentUser?.id}) });
+    if (res.ok) { showFeedback('ok','✅ 评委已分配'); refreshData(); }
+    else { const d=await res.json(); showFeedback('error',`❌ ${d.error||'分配失败'}`); }
+  } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
+}
+
+// ===================== ORGANIZER: AWARDS =====================
+
+function renderOrgAwards(race) {
+  const regs = App.registrations.filter(r=>r.race_id===race.id&&r.status==='approved');
+  const awards = (App.awards||[]).filter(a=>a.race_id===race.id);
+  const existing = awards.filter(a=>a.status==='published');
+  return `<div class="workspace-panels">
+    <div class="info-card" style="max-width:100%;"><h4>🏆 已发布 (${existing.length})</h4>
+      ${existing.length===0?'<div style="color:var(--muted);font-size:13px;padding:8px 0;">暂无</div>'
+      :existing.map(a=>{const reg=regs.find(r=>r.id===a.registration_id);const user=reg?App.users.find(u=>u.id===reg.user_id):null;return `<div class="info-row"><span class="label">#${a.rank} ${a.award_name}</span><span class="value">${user?.display_name||'?'} ✅</span></div>`;}).join('')}
+    </div>
+    <div class="info-card" style="max-width:100%;"><h4>➕ 创建奖项</h4>
+      ${regs.length===0?'<div style="color:var(--muted);font-size:13px;padding:8px 0;">没有已通过的选手</div>'
+      :`<div class="form-group"><label>选手</label><select id="aw-reg"><option value="">选择...</option>${regs.map(r=>{const u=App.users.find(x=>x.id===r.user_id);return `<option value="${r.id}">${u?u.display_name:'?'}</option>`;}).join('')}</select></div>
+      <div class="form-group"><label>奖项名称</label><input id="aw-name" placeholder="最佳作品" /></div>
+      <div class="form-group"><label>名次</label><input id="aw-rank" type="number" min="1" value="1" /></div>
+      <div class="form-group"><label>评语</label><textarea id="aw-reason" placeholder="获奖理由"></textarea></div>
+      <div class="action-bar"><button class="primary" onclick="doCreateAward('${race.id}')">创建</button></div>`}
+    </div>
+    <div class="info-card" style="max-width:100%;"><h4>📤 发布</h4>
+      ${awards.filter(a=>a.status==='draft').length===0?'<div style="color:var(--muted);font-size:13px;padding:8px 0;">暂无草稿</div>'
+      :awards.filter(a=>a.status==='draft').map(a=>`<div class="info-row"><span class="label">#${a.rank} ${a.award_name}</span><span class="value"><button class="primary" style="min-height:24px;padding:0 10px;font-size:11px;" onclick="doPublishAward('${a.id}')">发布</button></span></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+async function doCreateAward(raceId) {
+  const regId = document.getElementById('aw-reg')?.value;
+  const name = document.getElementById('aw-name')?.value;
+  const rank = parseInt(document.getElementById('aw-rank')?.value) || 1;
+  const reason = document.getElementById('aw-reason')?.value;
+  if (!regId||!name) { showFeedback('error','请选择选手并填写奖项名称'); return; }
+  try {
+    const res = await fetch('/api/awards', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({raceId, registrationId:regId, awardName:name, rank, decisionReason:reason}) });
+    if (res.ok) { showFeedback('ok',`✅ 奖项「${name}」已创建`); refreshData(); }
+    else { const d=await res.json(); showFeedback('error',`❌ ${d.error||'创建失败'}`); }
+  } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
+}
+
+async function doPublishAward(awardId) {
+  try {
+    const res = await fetch(`/api/awards/${awardId}/publish`, { method:'PUT' });
+    if (res.ok) { showFeedback('ok','✅ 奖项已发布'); refreshData(); }
+    else { const d=await res.json(); showFeedback('error',`❌ ${d.error||'发布失败'}`); }
+  } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
+}
+
+// ===================== JUDGE VIEWS =====================
+
+function renderJudgeWorks(race) {
+  const u = App.currentUser;
+  if (!u) return '<div class="empty-state">请先登录</div>';
+  const assignments = (App.judgeAssignments||[]).filter(ja=>ja.judge_user_id===u.id&&ja.race_id===race.id&&ja.status==='assigned');
+  if (assignments.length===0) return '<div class="empty-state">暂无待评审的作品</div>';
+  return `<div class="workspace-panels">${assignments.map(a => {
+    const w = App.works.find(x=>x.id===a.work_id);
+    if (!w) return '';
+    const author = App.users.find(x=>x.id===w.owner_user_id);
+    return `<div class="info-card" style="max-width:100%;"><h4>📄 ${w.title} <span class="status-tag judging" style="float:right;">待评审</span></h4>
+      <div class="info-row"><span class="label">作者</span><span class="value">${author?.display_name||'?'}</span></div>
+      ${w.summary?`<div class="info-row"><span class="label">摘要</span><span class="value">${w.summary}</span></div>`:''}
+      ${w.repo_url?`<div class="info-row"><span class="label">代码</span><span class="value"><a href="${w.repo_url}" target="_blank">查看</a></span></div>`:''}
+      <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">
+        <h4 style="font-size:13px;font-weight:950;color:var(--blue-700);margin-bottom:8px;">✏️ 评分</h4>
+        <div class="form-group"><label>作品分 (1-10)</label><input id="sr-${a.id}" type="number" min="1" max="10" value="7" /></div>
+        <div class="form-group"><label>骑行分 (1-10)</label><input id="sri-${a.id}" type="number" min="1" max="10" value="7" /></div>
+        <div class="form-group"><label>评语</label><textarea id="cmt-${a.id}" placeholder="评价和建议"></textarea></div>
+        <div class="action-bar"><button class="primary" onclick="doSubmitJudging('${a.id}','${w.id}')">提交评审</button></div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderJudgeDone(race) {
+  const u = App.currentUser;
+  const records = (App.judgingRecords||[]).filter(jr=>jr.judge_user_id===u.id);
+  if (records.length===0) return '<div class="empty-state">暂无已评审的作品</div>';
+  return `<div class="workspace-panels">${records.map(jr => `<div class="info-card"><h4>📄 ${jr.work_title||'作品'}</h4>
+    <div class="info-row"><span class="label">作品分</span><span class="value">${jr.score_result?.score||jr.score_result||'?'}/10</span></div>
+    <div class="info-row"><span class="label">骑行分</span><span class="value">${jr.score_riding?.score||jr.score_riding||'?'}/10</span></div>
+    ${jr.comments?`<div class="info-row"><span class="label">评语</span><span class="value">${jr.comments}</span></div>`:''}
+  </div>`).join('')}</div>`;
+}
+
+async function doSubmitJudging(assignmentId, workId) {
+  const u = App.currentUser;
+  if (!u) { showFeedback('error','请先登录'); return; }
+  const scoreResult = parseInt(document.getElementById(`sr-${assignmentId}`)?.value) || 7;
+  const scoreRiding = parseInt(document.getElementById(`sri-${assignmentId}`)?.value) || 7;
+  const comments = document.getElementById(`cmt-${assignmentId}`)?.value || '';
+  try {
+    const res = await fetch('/api/judging-records', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({judgeAssignmentId:assignmentId, workId, judgeUserId:u.id, scoreResult:{score:scoreResult}, scoreRiding:{score:scoreRiding}, comments}) });
+    if (res.ok) { showFeedback('ok','✅ 评审已提交'); refreshData(); }
+    else { const d=await res.json(); showFeedback('error',`❌ ${d.error||'提交失败'}`); }
   } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
 }
 
@@ -646,6 +827,9 @@ async function refreshData() {
   const r3 = await fetch('/api/race-projects'); App.raceProjects = await r3.json();
   const r4 = await fetch('/api/works'); App.works = await r4.json();
   const r5 = await fetch('/api/ca-connections'); App.caConnections = await r5.json();
+  const r6 = await fetch('/api/judge-assignments'); App.judgeAssignments = await r6.json();
+  const r7 = await fetch('/api/judging-records'); App.judgingRecords = await r7.json();
+  try { const r8 = await fetch('/api/awards'); App.awards = await r8.json(); } catch(e) {}
   renderSidebar();
   if (App.currentRace) {
     const updated = App.races.find(r=>r.id===App.currentRace.id);

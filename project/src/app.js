@@ -123,6 +123,24 @@ app.post("/api/races", (req, res) => {
   res.status(201).json({ id, slug: raceSlug, title, status: status || "draft" });
 });
 
+// PUT /api/races/:id — update race settings
+app.put("/api/races/:id", (req, res) => {
+  const race = get("SELECT * FROM races WHERE id = ?", [req.params.id]);
+  if (!race) return res.status(404).json({ error: "赛事不存在" });
+
+  const { title, challengeBrief, status, rules, timeWindows } = req.body;
+  const patch = { updated_at: now() };
+  if (title !== undefined) patch.title = title;
+  if (challengeBrief !== undefined) patch.challenge_brief = challengeBrief;
+  if (status !== undefined) patch.status = status;
+  if (rules !== undefined) patch.rules = rules;
+  if (timeWindows !== undefined) patch.time_windows = JSON.stringify(timeWindows);
+
+  update("races", race.id, patch);
+  save();
+  res.json({ ok: true, id: race.id });
+});
+
 // GET /api/races/:slug — single race detail
 app.get("/api/races/:slug", (req, res) => {
   const race = get("SELECT * FROM races WHERE slug = ?", [req.params.slug]);
@@ -250,6 +268,23 @@ app.put("/api/registrations/:id/approve", (req, res) => {
     registration_id: reg.id,
     race_project_id: rpId,
   });
+});
+
+// PUT /api/registrations/:id/reject — reject registration
+app.put("/api/registrations/:id/reject", (req, res) => {
+  const reg = get("SELECT * FROM registrations WHERE id = ?", [req.params.id]);
+  if (!reg) return res.status(404).json({ error: "报名不存在" });
+  if (reg.status !== "submitted") return res.status(400).json({ error: "只能拒绝待审核的报名" });
+
+  const t = now();
+  update("registrations", reg.id, {
+    status: "rejected",
+    rejected_at: t,
+    rejected_reason: req.body.reason || "主办方拒绝了报名",
+    updated_at: t,
+  });
+  save();
+  res.json({ ok: true, id: reg.id, status: "rejected" });
 });
 
 // GET /api/registrations?userId=X — user's registrations
@@ -385,6 +420,140 @@ app.get("/api/race-projects", (req, res) => {
     authenticity_summary: JSON.parse(rp.authenticity_summary || "{}"),
     review_flags: JSON.parse(rp.review_flags || "[]"),
   })));
+});
+
+// ==================== Judge Assignment Routes ====================
+
+// POST /api/judge-assignments — assign a judge to a work
+app.post("/api/judge-assignments", (req, res) => {
+  const { raceId, workId, judgeUserId, assignedByUserId } = req.body;
+  if (!raceId || !workId || !judgeUserId) return res.status(400).json({ error: "raceId, workId, judgeUserId 必填" });
+
+  const t = now();
+  const id = uid();
+  try {
+    run(
+      `INSERT INTO judge_assignments (id, race_id, work_id, judge_user_id, assigned_by_user_id, status, assigned_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'assigned', ?, ?, ?)`,
+      [id, raceId, workId, judgeUserId, assignedByUserId || "system", t, t, t],
+    );
+    save();
+    res.status(201).json({ id, status: "assigned" });
+  } catch (e) {
+    res.status(409).json({ error: "分配冲突: " + e.message });
+  }
+});
+
+// GET /api/judge-assignments?judgeUserId=X&raceId=X
+app.get("/api/judge-assignments", (req, res) => {
+  const { judgeUserId, raceId } = req.query;
+  let sql = "SELECT ja.*, w.title as work_title, w.summary as work_summary FROM judge_assignments ja JOIN works w ON ja.work_id = w.id WHERE 1=1";
+  const params = [];
+  if (judgeUserId) { sql += " AND ja.judge_user_id = ?"; params.push(judgeUserId); }
+  if (raceId) { sql += " AND ja.race_id = ?"; params.push(raceId); }
+  sql += " ORDER BY ja.created_at DESC";
+  res.json(all(sql, params));
+});
+
+// DELETE /api/judge-assignments/:id — remove a judge assignment
+app.delete("/api/judge-assignments/:id", (req, res) => {
+  run("DELETE FROM judge_assignments WHERE id = ?", [req.params.id]);
+  save();
+  res.json({ ok: true });
+});
+
+// ==================== Judging Record Routes ====================
+
+// POST /api/judging-records — submit a judging record
+app.post("/api/judging-records", (req, res) => {
+  const { judgeAssignmentId, workId, judgeUserId, scoreResult, scoreRiding, comments } = req.body;
+  if (!judgeAssignmentId || !workId || !judgeUserId) return res.status(400).json({ error: "必填字段缺失" });
+
+  const t = now();
+  const id = uid();
+  try {
+    run(
+      `INSERT INTO judging_records (id, judge_assignment_id, work_id, judge_user_id, score_result, score_riding, comments, status, submitted_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted', ?, ?, ?)`,
+      [id, judgeAssignmentId, workId, judgeUserId, JSON.stringify(scoreResult || {}), JSON.stringify(scoreRiding || {}), comments || "", t, t, t],
+    );
+    // Mark assignment as completed
+    run("UPDATE judge_assignments SET status = 'completed', completed_at = ?, updated_at = ? WHERE id = ?", [t, t, judgeAssignmentId]);
+    save();
+    res.status(201).json({ id, status: "submitted" });
+  } catch (e) {
+    res.status(409).json({ error: "评审记录冲突: " + e.message });
+  }
+});
+
+// GET /api/judging-records?judgeUserId=X&workId=X
+app.get("/api/judging-records", (req, res) => {
+  const { judgeUserId, workId } = req.query;
+  let sql = "SELECT jr.*, w.title as work_title FROM judging_records jr JOIN works w ON jr.work_id = w.id WHERE 1=1";
+  const params = [];
+  if (judgeUserId) { sql += " AND jr.judge_user_id = ?"; params.push(judgeUserId); }
+  if (workId) { sql += " AND jr.work_id = ?"; params.push(workId); }
+  sql += " ORDER BY jr.created_at DESC";
+  res.json(all(sql, params).map(r => ({
+    ...r,
+    score_result: JSON.parse(r.score_result || "{}"),
+    score_riding: JSON.parse(r.score_riding || "{}"),
+  })));
+});
+
+// ==================== Award Routes ====================
+
+// GET /api/awards — list all awards
+app.get("/api/awards", (_req, res) => {
+  const awards = all("SELECT * FROM awards ORDER BY created_at DESC");
+  res.json(awards);
+});
+
+// POST /api/awards — create an award for a registration
+app.post("/api/awards", (req, res) => {
+  const { raceId, registrationId, awardName, rank, workId, decisionReason } = req.body;
+  if (!raceId || !registrationId || !awardName) return res.status(400).json({ error: "raceId, registrationId, awardName 必填" });
+
+  const t = now();
+  const id = uid();
+  try {
+    run(
+      `INSERT INTO awards (id, race_id, registration_id, work_id, award_name, rank, decision_reason, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`,
+      [id, raceId, registrationId, workId || null, awardName, rank || 1, decisionReason || "", t, t],
+    );
+    save();
+    res.status(201).json({ id, status: "draft" });
+  } catch (e) {
+    res.status(409).json({ error: "奖项创建冲突: " + e.message });
+  }
+});
+
+// PUT /api/awards/:id/publish — publish an award
+app.put("/api/awards/:id/publish", (req, res) => {
+  const award = get("SELECT * FROM awards WHERE id = ?", [req.params.id]);
+  if (!award) return res.status(404).json({ error: "奖项不存在" });
+
+  const t = now();
+  update("awards", award.id, { status: "published", published_at: t, updated_at: t });
+  save();
+  res.json({ ok: true, id: award.id, status: "published" });
+});
+
+// PUT /api/awards/:id — update award
+app.put("/api/awards/:id", (req, res) => {
+  const award = get("SELECT * FROM awards WHERE id = ?", [req.params.id]);
+  if (!award) return res.status(404).json({ error: "奖项不存在" });
+
+  const { awardName, rank, decisionReason } = req.body;
+  const patch = {};
+  if (awardName !== undefined) patch.award_name = awardName;
+  if (rank !== undefined) patch.rank = rank;
+  if (decisionReason !== undefined) patch.decision_reason = decisionReason;
+  patch.updated_at = now();
+  update("awards", award.id, patch);
+  save();
+  res.json({ ok: true, id: award.id });
 });
 
 // ==================== Dashboard / Stats ====================
