@@ -306,8 +306,10 @@ function renderSidebar() {
   const myRaceIds = new Set();
   const isOrg = u.roles.includes('organizer')||u.roles.includes('admin');
   const isRider = u.roles.includes('rider');
+  const isJudge = u.roles.includes('judge');
   if (isOrg) App.races.filter(r => (r.organizer_user_ids||[]).includes(u.id)).forEach(r => myRaceIds.add(r.id));
   if (isRider) App.registrations.filter(reg => reg.user_id===u.id).forEach(reg => myRaceIds.add(reg.race_id));
+  if (isJudge) App.races.filter(r => r.status==='judging'||r.status==='submitting').forEach(r => myRaceIds.add(r.id));
 
   if (myRaceIds.size > 0) {
     raceSection.style.display='block';
@@ -465,11 +467,24 @@ function renderOrgOverview(race) {
   const regs = App.registrations.filter(r=>r.race_id===race.id);
   const pending = regs.filter(r=>r.status==='submitted');
   const approved = regs.filter(r=>r.status==='approved');
+
+  const statusOptions = ['draft','published','registration','running','submitting','judging','completed','archived'];
+  const statusIdx = statusOptions.indexOf(race.status);
+
   return `<div class="workspace-panels">
     <div class="info-card"><h4>📋 赛事概览</h4>
       <div class="info-row"><span class="label">状态</span><span class="value"><span class="status-tag ${race.status}">${statusLabel(race.status)}</span></span></div>
       <div class="info-row"><span class="label">赛题</span><span class="value">${race.challenge_brief||'-'}</span></div>
       <div class="info-row"><span class="label">报名 / 已通过 / 待审</span><span class="value">${regs.length} / ${approved.length} / ${pending.length}</span></div>
+      <div class="info-row" style="border-top:1px solid var(--line);padding-top:10px;margin-top:10px;">
+        <span class="label">变更状态</span>
+        <span class="value">
+          <select id="race-status-select" style="padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;">
+            ${statusOptions.map((s,i) => `<option value="${s}" ${i===statusIdx?'selected':''}>${statusLabel(s)}</option>`).join('')}
+          </select>
+          <button class="primary" style="min-height:26px;padding:0 10px;font-size:11px;margin-left:4px;" onclick="doUpdateRaceStatus('${race.id}')">更新</button>
+        </span>
+      </div>
     </div>
     <div class="info-card"><h4>⏰ 赛程</h4>
       ${race.time_windows?Object.entries(race.time_windows||{}).map(([k,v])=>`<div class="info-row"><span class="label">${k}</span><span class="value">${new Date(v).toLocaleDateString('zh-CN')}</span></div>`).join(''):'<div class="info-row"><span>未设置</span></div>'}
@@ -478,6 +493,17 @@ function renderOrgOverview(race) {
       <div class="info-row"><span class="label">已提交作品</span><span class="value">${App.works.filter(w=>w.race_id===race.id).length}</span></div>
     </div>
   </div>`;
+}
+
+async function doUpdateRaceStatus(raceId) {
+  const sel = document.getElementById('race-status-select');
+  if (!sel) return;
+  const newStatus = sel.value;
+  try {
+    const res = await fetch(`/api/races/${raceId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:newStatus}) });
+    if (res.ok) { showFeedback('ok',`✅ 状态已更新为「${statusLabel(newStatus)}」`); refreshData(); }
+    else { const d=await res.json(); showFeedback('error',`❌ ${d.error||'更新失败'}`); }
+  } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
 }
 
 function renderOrgRegistrations(race) {
