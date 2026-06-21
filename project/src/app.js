@@ -27,6 +27,9 @@ app.get("/admin", (_req, res) => res.sendFile(path.join(publicDir, "admin.html")
 // Live Hall → real-time race display
 app.get("/live-hall", (_req, res) => res.sendFile(path.join(publicDir, "live-hall.html")));
 
+// Screen Console → big screen display
+app.get("/screen", (_req, res) => res.sendFile(path.join(publicDir, "screen.html")));
+
 // Static files (after explicit routes)
 app.use(express.static(publicDir));
 
@@ -716,6 +719,104 @@ app.put("/api/awards/:id", (req, res) => {
   update("awards", award.id, patch);
   save();
   res.json({ ok: true, id: award.id });
+});
+
+// ==================== DEV-7: Report Generator ====================
+
+// POST /api/reports/generate — generate a report for a race
+app.post("/api/reports/generate", (req, res) => {
+  const { raceId, reportType, subjectRegistrationId } = req.body;
+  if (!raceId || !reportType) return res.status(400).json({ error: "raceId 和 reportType 必填" });
+
+  const race = get("SELECT * FROM races WHERE id = ?", [raceId]);
+  if (!race) return res.status(404).json({ error: "赛事不存在" });
+
+  const t = now();
+  const reportId = uid();
+  let title = "";
+  let content = "";
+
+  if (reportType === "race_report") {
+    const registrations = all("SELECT * FROM registrations WHERE race_id = ?", [raceId]);
+    const awards = all("SELECT a.*, u.display_name as rider_name FROM awards a LEFT JOIN users u ON (SELECT user_id FROM registrations WHERE id = a.registration_id) = u.id WHERE a.race_id = ? AND a.status = 'published' ORDER BY a.rank", [raceId]);
+    const works = all("SELECT COUNT(*) as count FROM works WHERE race_id = ? AND status = 'submitted'", [raceId]);
+
+    title = `${race.title} — 赛事报告`;
+    content = JSON.stringify({
+      raceTitle: race.title,
+      status: race.status,
+      totalRegistrations: registrations.length,
+      totalWorks: works[0]?.count || 0,
+      awards: awards.map(a => ({ rank: a.rank, awardName: a.award_name, riderName: a.rider_name })),
+      generatedAt: t,
+    }, null, 2);
+
+  } else if (reportType === "rider_report") {
+    if (!subjectRegistrationId) return res.status(400).json({ error: "rider_report 需要 subjectRegistrationId" });
+    const reg = get("SELECT * FROM registrations WHERE id = ?", [subjectRegistrationId]);
+    if (!reg) return res.status(404).json({ error: "报名不存在" });
+    const user = get("SELECT * FROM users WHERE id = ?", [reg.user_id]);
+    const rp = get("SELECT * FROM race_projects WHERE registration_id = ?", [subjectRegistrationId]);
+    const work = get("SELECT * FROM works WHERE registration_id = ?", [subjectRegistrationId]);
+    const projections = all("SELECT * FROM race_projections WHERE race_project_id = ?", [rp?.id]);
+    const awards = all("SELECT * FROM awards WHERE registration_id = ? AND status = 'published'", [subjectRegistrationId]);
+
+    title = `${user?.display_name||'选手'} — 骑行报告`;
+    content = JSON.stringify({
+      riderName: user?.display_name,
+      raceTitle: race.title,
+      registrationStatus: reg.status,
+      raceProjectStatus: rp?.aggregate_ingestion_status,
+      workTitle: work?.title,
+      workStatus: work?.status,
+      awards: awards.map(a => ({ awardName: a.award_name, rank: a.rank })),
+      metrics: projections[0] ? JSON.parse(projections[0].metrics || "{}") : {},
+      generatedAt: t,
+    }, null, 2);
+
+  } else if (reportType === "review_summary") {
+    const awards = all("SELECT a.*, u.display_name as rider_name FROM awards a LEFT JOIN users u ON (SELECT user_id FROM registrations WHERE id = a.registration_id) = u.id WHERE a.race_id = ? AND a.status = 'published' ORDER BY a.rank", [raceId]);
+    title = `${race.title} — 评审总结`;
+    content = JSON.stringify({
+      raceTitle: race.title,
+      awards: awards.map(a => ({ rank: a.rank, awardName: a.award_name, riderName: a.rider_name, decisionReason: a.decision_reason })),
+      generatedAt: t,
+    }, null, 2);
+  }
+
+  try {
+    run(
+      `INSERT INTO reports (id, race_id, report_type, subject_registration_id, title, content, status, generated_from, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'generated', '{}', ?, ?)`,
+      [reportId, raceId, reportType, subjectRegistrationId || null, title, content, t, t],
+    );
+    save();
+    res.status(201).json({ id: reportId, title, reportType, status: "generated" });
+  } catch (e) {
+    res.status(409).json({ error: "报告生成失败: " + e.message });
+  }
+});
+
+// GET /api/reports?raceId=X — list reports
+app.get("/api/reports", (req, res) => {
+  const { raceId, reportType } = req.query;
+  let sql = "SELECT * FROM reports WHERE 1=1";
+  const params = [];
+  if (raceId) { sql += " AND race_id = ?"; params.push(raceId); }
+  if (reportType) { sql += " AND report_type = ?"; params.push(reportType); }
+  sql += " ORDER BY created_at DESC";
+  res.json(all(sql, params).map(r => ({ ...r, generated_from: JSON.parse(r.generated_from || "{}") })));
+});
+
+// PUT /api/reports/:id/publish — publish a report
+app.put("/api/reports/:id/publish", (req, res) => {
+  const report = get("SELECT * FROM reports WHERE id = ?", [req.params.id]);
+  if (!report) return res.status(404).json({ error: "报告不存在" });
+
+  const t = now();
+  update("reports", report.id, { status: "published", published_at: t, updated_at: t, visibility: "public" });
+  save();
+  res.json({ ok: true, id: report.id, status: "published" });
 });
 
 // ==================== Dashboard / Stats ====================

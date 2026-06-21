@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Screen Console — ARY</title>
+  <link rel="stylesheet" href="/app.css" />
+  <style>
+    * { margin:0;padding:0;box-sizing:border-box; }
+    body { background:#0f172a;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;overflow:hidden; }
+
+    .sc-shell { position:fixed;inset:0;display:flex;flex-direction:column; }
+    .sc-control-bar { display:flex;align-items:center;gap:10px;padding:8px 20px;background:#1e293b;border-bottom:1px solid #334155;z-index:10; }
+    .sc-control-bar .brand { font-weight:950;font-size:14px;color:#e2e8f0;margin-right:8px; }
+    .sc-control-bar select { padding:4px 10px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#e2e8f0;font-size:13px; }
+    .sc-control-bar button { padding:6px 14px;border:1px solid #334155;border-radius:6px;background:#1e293b;color:#e2e8f0;font-size:12px;font-weight:900;cursor:pointer; }
+    .sc-control-bar button:hover { background:#334155; }
+    .sc-control-bar button.active { background:#3b82f6;border-color:#3b82f6;color:#fff; }
+    .sc-control-bar button.fullscreen-btn { margin-left:auto;background:#22c55e;border-color:#22c55e;color:#052e16; }
+
+    /* Display Area */
+    .sc-display { flex:1;position:relative;overflow:hidden; }
+    .sc-mode { position:absolute;inset:0;display:none;padding:24px 32px;overflow-y:auto; }
+    .sc-mode.active { display:block; }
+
+    /* Jumbotron Mode */
+    .jumbotron { display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:100%; }
+    .jumbotron h1 { font-size:64px;font-weight:950;color:#f1f5f9;margin-bottom:8px; }
+    .jumbotron .sub { font-size:28px;color:#94a3b8;margin-bottom:20px; }
+    .jumbotron .big-number { font-size:120px;font-weight:950;color:#3b82f6;line-height:1; }
+    .jumbotron .big-label { font-size:24px;color:#94a3b8;margin-top:8px; }
+
+    /* Billboard Mode */
+    .billboard { display:grid;grid-template-columns:1fr 1fr;gap:24px;min-height:100%;align-content:center; }
+    .billboard-card { background:#1e293b;border:1px solid #334155;border-radius:16px;padding:24px; }
+    .billboard-card h2 { font-size:18px;font-weight:950;color:#94a3b8;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px; }
+    .billboard-card .big { font-size:48px;font-weight:950;color:#3b82f6; }
+    .billboard-card .row { display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #334155;font-size:16px; }
+    .billboard-card .row:last-child { border-bottom:none; }
+
+    /* Live Mode */
+    .live-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px; }
+    .live-card { background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px; }
+    .live-card h3 { font-size:20px;font-weight:950;color:#f1f5f9;margin-bottom:8px; }
+    .live-card .stat { font-size:14px;color:#94a3b8;margin:4px 0; }
+    .live-card .stat b { color:#e2e8f0; }
+
+    /* Leaderboard Mode */
+    .lb-table { width:100%;border-collapse:collapse;font-size:20px; }
+    .lb-table th { text-align:left;padding:12px 16px;color:#94a3b8;font-weight:700;border-bottom:2px solid #334155; }
+    .lb-table td { padding:14px 16px;border-bottom:1px solid #334155; }
+    .lb-table .rank-1 { color:#fbbf24;font-weight:950;font-size:24px; }
+    .lb-table .rank-2 { color:#94a3b8;font-weight:950;font-size:22px; }
+    .lb-table .rank-3 { color:#d97706;font-weight:950;font-size:20px; }
+    .lb-table tr:hover td { background:rgba(59,130,246,0.08); }
+
+    .empty-state { text-align:center;padding:80px 20px;color:#94a3b8;font-size:18px; }
+  </style>
+</head>
+<body>
+<div class="sc-shell">
+  <div class="sc-control-bar">
+    <span class="brand">📺 Screen Console</span>
+    <select id="race-select" onchange="loadScreen()"><option value="">选择赛事...</option></select>
+    <button class="active" data-mode="jumbotron" onclick="switchMode('jumbotron')">Jumbotron</button>
+    <button data-mode="billboard" onclick="switchMode('billboard')">Billboard</button>
+    <button data-mode="live" onclick="switchMode('live')">🔴 Live</button>
+    <button data-mode="leaderboard" onclick="switchMode('leaderboard')">🏆 榜单</button>
+    <button data-mode="works" onclick="switchMode('works')">📦 作品</button>
+    <button class="fullscreen-btn" onclick="toggleFullscreen()">⛶ 全屏</button>
+  </div>
+  <div class="sc-display" id="sc-display">
+    <div class="empty-state">选择赛事以开始大屏展示</div>
+  </div>
+</div>
+
+<script>
+  let currentMode = 'jumbotron';
+  let currentRaceId = null;
+  let pollTimer = null;
+  let allRaces = [];
+
+  async function init() {
+    const res = await fetch('/api/races');
+    allRaces = await res.json();
+    const sel = document.getElementById('race-select');
+    sel.innerHTML = '<option value="">选择赛事...</option>' + allRaces.map(r => `<option value="${r.id}">${r.title}</option>`).join('');
+    if (allRaces.length > 0) { sel.value = allRaces[0].id; loadScreen(); }
+  }
+
+  async function loadScreen() {
+    const raceId = document.getElementById('race-select').value;
+    if (!raceId) return;
+    currentRaceId = raceId;
+    if (pollTimer) clearInterval(pollTimer);
+    await refreshDisplay();
+    pollTimer = setInterval(refreshDisplay, 10000);
+  }
+
+  async function refreshDisplay() {
+    if (!currentRaceId) return;
+    try {
+      const res = await fetch(`/api/live-hall/${currentRaceId}`);
+      if (!res.ok) throw new Error('Not found');
+      const data = await res.json();
+      renderMode(currentMode, data);
+    } catch(e) {
+      document.getElementById('sc-display').innerHTML = `<div class="empty-state">⚠ Fallback: ${e.message}</div>`;
+    }
+  }
+
+  function switchMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    if (currentRaceId) refreshDisplay();
+    else document.getElementById('sc-display').innerHTML = '<div class="empty-state">选择赛事以开始大屏展示</div>';
+  }
+
+  function renderMode(mode, data) {
+    const { race, projections, recentEvents } = data;
+    const display = document.getElementById('sc-display');
+    const totalTokens = projections.reduce((s,p) => s + ((p.metrics||{}).tokensUsed||0), 0);
+    const totalRiders = projections.length;
+    const topRider = projections[0];
+
+    switch(mode) {
+      case 'jumbotron':
+        display.innerHTML = `<div class="sc-mode active"><div class="jumbotron">
+          <h1>${race.title}</h1>
+          <div class="sub">${race.status === 'running' ? '🔴 赛事进行中' : race.status}</div>
+          <div style="display:flex;gap:60px;margin-top:40px;">
+            <div><div class="big-number">${totalRiders}</div><div class="big-label">🏇 骑手</div></div>
+            <div><div class="big-number">${Math.round(totalTokens/1000)}k</div><div class="big-label">⚡ 总消耗</div></div>
+            <div><div class="big-number">${recentEvents.length}</div><div class="big-label">📡 事件</div></div>
+          </div>
+          ${topRider ? `<div style="margin-top:40px;font-size:20px;color:#fbbf24;">🥇 领先: ${topRider.rider_name||'骑手'} · 进度 ${(topRider.metrics||{}).progressPercent||0}%</div>` : ''}
+        </div></div>`;
+        break;
+
+      case 'billboard':
+        display.innerHTML = `<div class="sc-mode active"><div class="billboard">
+          <div class="billboard-card"><h2>🏇 骑手</h2><div class="big">${totalRiders}</div><div style="margin-top:12px;font-size:18px;color:#94a3b8;">已接入 CA</div></div>
+          <div class="billboard-card"><h2>⚡ Token</h2><div class="big">${Math.round(totalTokens/1000)}k</div><div style="margin-top:12px;font-size:18px;color:#94a3b8;">总消耗</div></div>
+          <div class="billboard-card"><h2>📡 事件</h2><div class="big">${recentEvents.length}</div><div style="margin-top:12px;font-size:18px;color:#94a3b8;">最新信号</div></div>
+          <div class="billboard-card"><h2>📈 进度</h2><div class="big">${topRider ? (topRider.metrics||{}).progressPercent||0 : 0}%</div><div style="margin-top:12px;font-size:18px;color:#94a3b8;">领先者进度</div></div>
+        </div></div>`;
+        break;
+
+      case 'live':
+        display.innerHTML = `<div class="sc-mode active">
+          <div class="live-grid">${projections.map(p => `
+            <div class="live-card"><h3>${p.rider_name||'骑手'}</h3>
+              <div class="stat">进度: <b>${(p.metrics||{}).progressPercent||0}%</b></div>
+              <div class="stat">Token: <b>${Math.round(((p.metrics||{}).tokensUsed||0)/1000)}k</b></div>
+              <div class="stat">Sessions: <b>${(p.metrics||{}).sessionsCount||0}</b></div>
+              <div class="stat">状态: <b>${(p.connection||{}).ingestion_status||'unknown'}</b></div>
+              ${(p.risks||[]).length ? `<div class="stat" style="color:#f59e0b;">⚠ ${p.risks.join(', ')}</div>` : ''}
+            </div>`).join('')}
+          ${projections.length === 0 ? '<div class="empty-state">暂无骑手数据</div>' : ''}
+        </div></div>`;
+        break;
+
+      case 'leaderboard':
+        display.innerHTML = projections.length === 0
+          ? '<div class="sc-mode active"><div class="empty-state">暂无榜单数据</div></div>'
+          : `<div class="sc-mode active"><table class="lb-table"><thead><tr><th>#</th><th>骑手</th><th>进度</th><th>Tokens</th><th>Sessions</th><th>状态</th></tr></thead><tbody>
+            ${projections.map((p,i) => `<tr><td class="rank-${i<3?i+1:'0'}">#${p.leaderboard_rank||i+1}</td>
+              <td style="font-weight:950;font-size:22px;">${p.rider_name||'骑手 '+(i+1)}</td>
+              <td>${(p.metrics||{}).progressPercent||0}%</td>
+              <td>${Math.round(((p.metrics||{}).tokensUsed||0)/1000)}k</td>
+              <td>${(p.metrics||{}).sessionsCount||0}</td>
+              <td>${(p.connection||{}).ingestion_status||'unknown'}</td>
+            </tr>`).join('')}
+          </tbody></table></div>`;
+        break;
+
+      case 'works':
+        display.innerHTML = `<div class="sc-mode active">
+          <h2 style="font-size:28px;font-weight:950;margin-bottom:20px;">📦 作品展示</h2>
+          <div class="live-grid">${projections.map(p => `
+            <div class="live-card"><h3>${p.rider_name||'骑手'}</h3>
+              <div class="stat">进度: <b>${(p.metrics||{}).progressPercent||0}%</b></div>
+              <div class="stat">Token: <b>${Math.round(((p.metrics||{}).tokensUsed||0)/1000)}k</b></div>
+              ${p.latest_event_summary ? `<div class="stat">📌 ${p.latest_event_summary.slice(0,60)}</div>` : ''}
+            </div>`).join('')}
+        </div></div>`;
+        break;
+    }
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  }
+
+  init();
+</script>
+</body>
+</html>
