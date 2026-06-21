@@ -30,6 +30,12 @@ app.get("/live-hall", (_req, res) => res.sendFile(path.join(publicDir, "live-hal
 // Screen Console → big screen display
 app.get("/screen", (_req, res) => res.sendFile(path.join(publicDir, "screen.html")));
 
+// New IA pages
+app.get("/cooperation", (_req, res) => res.sendFile(path.join(publicDir, "cooperation.html")));
+app.get("/rider", (_req, res) => res.sendFile(path.join(publicDir, "rider.html")));
+app.get("/work", (_req, res) => res.sendFile(path.join(publicDir, "work.html")));
+app.get("/review", (_req, res) => res.sendFile(path.join(publicDir, "review.html")));
+
 // Static files (after explicit routes)
 app.use(express.static(publicDir));
 

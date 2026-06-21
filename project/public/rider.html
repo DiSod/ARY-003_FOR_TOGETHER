@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Rider Profile — ARY</title><link rel="stylesheet" href="/app.css"/></head>
+<body>
+<header class="ary-header">
+  <a class="brand" href="/home.html"><img src="/assets/logo-horse-compass-transparent.png" alt=""/><span>Agent Racing Yard</span></a>
+  <nav><a href="/home.html">Races</a><a href="/works.html">Works</a><a href="/results.html">Results</a><a href="/cooperation.html">Cooperation</a></nav>
+  <div class="user-area"><a href="/console" class="btn btn-outline btn-sm">Console →</a></div>
+</header>
+<div class="page-container">
+  <div id="rider-header" style="display:flex;gap:24px;align-items:center;margin-bottom:24px;"></div>
+  <div id="rider-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;"></div>
+  <h2 style="font-size:20px;margin-bottom:12px;">📦 参赛作品</h2>
+  <div id="rider-works"></div>
+</div>
+<footer class="ary-footer">Agent Racing Yard · MVP v0.2</footer>
+<script>
+  const slug = new URLSearchParams(location.search).get('slug') || '';
+  async function load(){
+    try {
+      const [usersRes, racesRes, regsRes, worksRes, awardsRes] = await Promise.all([
+        fetch('/api/auth/users'), fetch('/api/races'), fetch('/api/registrations'),
+        fetch('/api/works'), fetch('/api/awards'),
+      ]);
+      const users = await usersRes.json(); const races = await racesRes.json();
+      const regs = await regsRes.json(); const works = await worksRes.json();
+      const awards = await awardsRes.json();
+
+      const user = slug ? users.find(u=>u.slug===slug) : users.find(u=>u.roles.includes('rider'));
+      if(!user){ document.querySelector('.page-container').innerHTML='<div class="empty-state">骑手未找到</div>'; return; }
+
+      const myRegs = regs.filter(r=>r.user_id===user.id);
+      const myWorks = works.filter(w=>w.owner_user_id===user.id);
+      const myAwards = awards.filter(a=>myRegs.some(r=>r.id===a.registration_id)&&a.status==='published');
+
+      document.getElementById('rider-header').innerHTML=
+        `<div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--blue-500),var(--blue-800));display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;font-weight:950;">${(user.display_name||'?')[0]}</div>
+         <div><h1 style="font-size:28px;margin:0;">${user.display_name}</h1>
+         <p style="color:var(--muted);margin:4px 0 0;">${(user.roles||[]).map(r=>({rider:'🏇骑手',judge:'⚖️评委',organizer:'📋主办方',admin:'🔧管理员'}[r]||r)).join(' · ')}</p></div>`;
+
+      document.getElementById('rider-stats').innerHTML=
+        `<div class="card" style="text-align:center;padding:20px;"><div style="font-size:32px;font-weight:950;color:var(--blue-700)">${myRegs.length}</div><div style="font-size:13px;color:var(--muted);margin-top:4px;">参赛次数</div></div>
+         <div class="card" style="text-align:center;padding:20px;"><div style="font-size:32px;font-weight:950;color:var(--blue-700)">${myWorks.length}</div><div style="font-size:13px;color:var(--muted);margin-top:4px;">提交作品</div></div>
+         <div class="card" style="text-align:center;padding:20px;"><div style="font-size:32px;font-weight:950;color:var(--blue-700)">${myAwards.length}</div><div style="font-size:13px;color:var(--muted);margin-top:4px;">获得奖项</div></div>`;
+
+      document.getElementById('rider-works').innerHTML=myWorks.length===0?'<div class="empty-state">暂无作品</div>'
+        :`<div class="work-list">${myWorks.map(w=>{const race=races.find(r=>r.id===w.race_id);const aw=myAwards.find(a=>a.work_id===w.id);return `<div class="card work-item"><div class="info"><h3>${w.title}</h3><p>${w.summary||'暂无摘要'}</p><div style="font-size:13px;color:var(--muted);margin-top:4px;">${race?race.title:'未知赛事'}${aw?` · 🏆 ${aw.award_name}`:''}</div></div></div>`;}).join('')}</div>`;
+    } catch(e){ document.querySelector('.page-container').innerHTML=`<div class="empty-state">加载失败: ${e.message}</div>`; }
+  }
+  load();
+</script>
+</body>
+</html>
