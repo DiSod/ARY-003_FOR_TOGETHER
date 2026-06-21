@@ -237,3 +237,32 @@ PUT  /api/reports/:id/publish  — 发布报告
 | --- | --- |
 | DEV-1 测试 46 条 | ✅ 全部通过 |
 | 无破坏性变更 | ✅ 所有现有 API 和页面正常 |
+
+## 2026-06-21 — 补全 4 个 IA 页面
+
+### 新增页面
+
+| 页面 | 路径 | 说明 |
+| --- | --- | --- |
+| **Cooperation** | `/cooperation` | 合作与参与页：参赛/办赛/赞助/教学 四大模块 + API 实时数据统计 |
+| **Rider Profile** | `/rider?slug=xxx` | 骑手档案：头像/角色标签 + 参赛/作品/奖项统计 + 作品列表 |
+| **Work Detail** | `/work?id=xxx` | 作品详情页：标题/状态/摘要/描述/作者/赛事/代码链接 |
+| **Review** | `/review` | 评审总结页：已完成赛事的获奖名单 + review_summary 报告查看 |
+
+### 导航更新
+
+| 文件 | 变更 |
+| --- | --- |
+| `home.html` | 导航栏增加 Cooperation 链接 |
+| `works.html` | 导航栏增加 Cooperation 链接；作品卡片可点击跳转 `/work?id=xxx` |
+| `race.html` | 导航栏增加 Cooperation 链接；completed 赛事显示"📋 查看评审总结"CTA |
+| `results.html` | 导航栏增加 Cooperation 链接 |
+| `app.js` | 新增 4 个路由：`/cooperation`、`/rider`、`/work`、`/review` |
+
+### 验证
+
+| 检查项 | 结果 |
+| --- | --- |
+| npm test 46 条 | ✅ 全部通过 |
+| 所有页面正常加载 | ✅ 已验证 |
+| 导航无断裂 | ✅ 全部互链 |
