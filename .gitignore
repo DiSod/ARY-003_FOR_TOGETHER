@@ -1,20 +1,9 @@
-# Node
-node_modules/
-npm-debug.log*
-
-# Database (SQLite - each dev runs locally)
-project/db/*.sqlite
-
-# OS
+.agents/
 .DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-
-# DCR harness
-.dcr/
-
-# Session transcripts (large logs)
-session-transcript-*.jsonl
+node_modules/
+project/node_modules/
+project/db/*.sqlite
+project/db/*.sqlite-journal
+project/logs/*.log
+project/backups/
+*.log
