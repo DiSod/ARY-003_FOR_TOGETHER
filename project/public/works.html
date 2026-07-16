@@ -9,31 +9,44 @@
 <body>
   <header class="ary-header">
     <a class="brand" href="/home.html">
-      <img src="/assets/logo-horse-compass-transparent.png" alt="" />
-      <span>Agent Racing Yard</span>
+      <span class="brand-emblem">
+        <img src="/assets/logo-horse-compass-transparent.png" alt="" />
+      </span>
+      <span>
+        <strong>Agent Racing Yard</strong>
+        <small>骑行智能体 纵横三万里</small>
+      </span>
     </a>
-    <nav>
+    <nav class="ia-nav">
       <a href="/home.html">Races</a>
       <a href="/works.html" class="active">Works</a>
       <a href="/results.html">Results</a>
       <a href="/cooperation.html">Cooperation</a>
     </nav>
     <div class="user-area">
-      <a href="/console" class="btn btn-outline btn-sm">Console →</a>
+      <a href="/console" class="btn btn-outline btn-sm" style="font-weight:900; border-radius:10px;">Console →</a>
     </div>
   </header>
 
-  <div class="page-container">
-    <h1 style="font-size:24px;margin-bottom:8px">📦 作品广场</h1>
-    <p style="color:var(--muted);margin-bottom:24px">浏览所有赛事的参赛作品</p>
+  <div class="page-container" style="flex:1;">
+    <div class="page-label" style="display:flex; justify-content:center; align-items:center; position:relative; margin-bottom:24px;">
+      <span>GALLERY</span>
+      <b style="font-family:'Outfit',monospace; font-weight:800; font-size:18px;">WORKS</b>
+    </div>
 
-    <div id="filterBar" style="margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap"></div>
-    <div id="workList">
+    <p style="color:var(--muted);margin-bottom:24px; font-weight:500; text-align:center;">展示所有参赛 Rider 上传提交的智能体作品及流程证据</p>
+
+    <!-- Filter Buttons -->
+    <div id="filterBar" style="margin-bottom:24px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;"></div>
+    
+    <div id="workList" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap:24px;">
       <div class="empty-state"><p>加载中...</p></div>
     </div>
   </div>
 
-  <footer class="ary-footer">Agent Racing Yard · MVP v0.2</footer>
+  <footer class="ary-footer">
+    Agent Racing Yard · MVP v0.2 · 骑行智能体 纵横三万里
+  </footer>
 
   <script>
     async function load() {
@@ -48,7 +61,7 @@
         renderWorks(works, null);
       } catch (e) {
         document.getElementById("workList").innerHTML =
-          '<div class="empty-state"><p>无法加载作品数据</p></div>';
+          '<div class="empty-state"><div class="icon">❌</div><p>无法加载作品数据</p></div>';
       }
     }
 
@@ -71,7 +84,9 @@
       `;
       bar.querySelectorAll(".filter-btn").forEach(btn => {
         btn.addEventListener("click", () => {
-          bar.querySelectorAll(".filter-btn").forEach(b => { b.className = "btn btn-outline btn-sm filter-btn"; });
+          bar.querySelectorAll(".filter-btn").forEach(b => { 
+            b.className = "btn btn-outline btn-sm filter-btn"; 
+          });
           btn.className = "btn btn-primary btn-sm filter-btn";
           renderWorks(works, btn.dataset.race || null);
         });
@@ -80,26 +95,32 @@
 
     function renderWorks(works, raceFilter) {
       const filtered = raceFilter ? works.filter(w => w.race_id === raceFilter) : works;
+      const listContainer = document.getElementById("workList");
+      
       if (!filtered.length) {
-        document.getElementById("workList").innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>暂无作品</p></div>';
+        // Ensure empty state card fits full width in grid
+        listContainer.style.display = 'block';
+        listContainer.innerHTML = '<div class="empty-state"><div class="icon">📦</div><h2>暂无作品</h2><p>该赛事还没有提交任何作品。</p></div>';
         return;
       }
-      document.getElementById("workList").innerHTML = filtered.map(w => {
+      
+      listContainer.style.display = 'grid';
+      listContainer.innerHTML = filtered.map(w => {
         const cleanDesc = stripMarkdown(w.description || "");
         return `
-        <div class="glass-card" style="margin-bottom:16px;cursor:pointer; transition:var(--transition);" onclick="location.href='/work?id=${w.id}'">
-          <div class="card-body" style="padding: 24px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start; gap:16px;">
-              <div style="flex:1;">
-                <h3 class="card-title" style="font-size:18px;margin-bottom:6px; color:var(--ink);">${esc(w.title)}</h3>
-                <p style="font-size:14px;color:var(--muted); font-weight:500; margin-bottom:8px;">${esc(w.summary || "暂无描述")}</p>
-                ${cleanDesc ? `<p style="font-size:13px;color:var(--muted);line-height:1.6;background:rgba(0,0,0,0.02);padding:10px 14px;border-radius:8px;margin-top:12px;">${esc(cleanDesc.slice(0,200))}${cleanDesc.length>200?'...':''}</p>` : ""}
-                <div style="margin-top:16px;font-size:13px;color:var(--muted); font-weight:600;">👤 ${esc(w.author_name || "匿名")} · ${{submitted:'已提交',draft:'草稿',locked:'已锁定'}[w.status]||w.status}</div>
-              </div>
-              <span class="badge ${w.status==='submitted'?'badge-live':'badge-draft'}" style="margin-top:2px;">${{submitted:'已提交',draft:'草稿',locked:'已锁定'}[w.status]||w.status}</span>
+        <a href="/work.html?id=${w.id}" class="glass-card" style="text-decoration:none; color:inherit; display:flex; flex-direction:column; justify-content:space-between; transition:var(--transition); cursor:pointer;">
+          <div class="card-header" style="border-bottom: 1px solid var(--line); padding: 18px 24px; display:flex; justify-content:space-between; align-items:center;">
+            <span class="badge ${w.status==='submitted'?'badge-live':'badge-draft'}" style="margin-top:2px;">${{submitted:'已提交',draft:'草稿',locked:'已锁定'}[w.status]||w.status}</span>
+            <span style="font-size:12px; font-weight:700; color:var(--muted)">👤 ${esc(w.author_name || "匿名")}</span>
+          </div>
+          <div class="card-body" style="padding: 24px; flex:1; display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+              <h3 class="card-title" style="font-family:'Outfit',sans-serif; font-size:18px; font-weight:800; margin-bottom:8px; color:var(--ink);">${esc(w.title)}</h3>
+              <p style="font-size:14px; color:var(--muted); line-height:1.5; margin-bottom:12px; font-weight:500;">${esc(w.summary || "暂无描述")}</p>
+              ${cleanDesc ? `<p style="font-size:13px; color:var(--muted); line-height:1.6; background:rgba(0,0,0,0.02); padding:10px 14px; border-radius:8px; margin-top:12px;">${esc(cleanDesc.slice(0,140))}${cleanDesc.length>140?'...':''}</p>` : ""}
             </div>
           </div>
-        </div>
+        </a>
       `; }).join("");
     }
 
