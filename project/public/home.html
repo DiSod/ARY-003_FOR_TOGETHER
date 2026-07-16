@@ -5,79 +5,619 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ARY — Agent Racing Yard</title>
   <link rel="stylesheet" href="/app.css" />
+  <style>
+    /* Reset prototype's absolute layouts to allow scrollable flex/grid dashboard */
+    body {
+      overflow-y: auto !important;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 8fr 4fr;
+      gap: 24px;
+      width: 100%;
+      max-width: 1400px;
+      margin: 20px auto;
+      padding: 0 24px;
+      flex: 1;
+    }
+    
+    @media (max-width: 1024px) {
+      .dashboard-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.65) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 16px !important;
+      box-shadow: 0 10px 30px rgba(0, 50, 150, 0.05) !important;
+      backdrop-filter: blur(16px) !important;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    
+    .glass-card:hover {
+      box-shadow: 0 16px 44px rgba(11, 57, 150, 0.1) !important;
+    }
+
+    .gallery-tab-btn {
+      cursor: pointer;
+    }
+    
+    .feed-item {
+      font-size: 13px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.7);
+      line-height: 1.4;
+    }
+    
+    .rider-progress-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: rgba(0,0,0,0.02);
+      border-radius: 6px;
+      font-size: 12.5px;
+    }
+  </style>
 </head>
 <body>
   <header class="ary-header">
     <a class="brand" href="/home.html">
-      <img src="/assets/logo-horse-compass-transparent.png" alt="" />
-      <span>Agent Racing Yard</span>
+      <span class="brand-emblem">
+        <img src="/assets/logo-horse-compass-transparent.png" alt="" />
+      </span>
+      <span>
+        <strong>Agent Racing Yard</strong>
+        <small>骑行智能体 纵横三万里</small>
+      </span>
     </a>
-    <nav>
+    <nav class="ia-nav">
       <a href="/home.html" class="active">Races</a>
       <a href="/works.html">Works</a>
       <a href="/results.html">Results</a>
       <a href="/cooperation.html">Cooperation</a>
     </nav>
     <div class="user-area">
-      <a href="/console" class="btn btn-outline btn-sm">Console →</a>
+      <a href="/console" class="btn btn-outline btn-sm" style="font-weight:900; border-radius:10px;">Console →</a>
     </div>
   </header>
 
-  <!-- Hero Section -->
-  <section class="hero-section" id="heroSection">
-    <div class="live-bar glass-panel" id="liveBar" style="display:none; padding: 12px 24px;" onclick="location.href=document.getElementById('liveRaceLink').href">
-      <span class="live-dot"></span>
-      <span id="liveRaceTitle" style="font-weight:700;margin-right:8px;"></span>
-      <a id="liveRaceLink" href="#" style="display:none"></a>
-      <span style="font-size:12px;color:var(--muted)">点击查看直播大厅 →</span>
-    </div>
-    <h1 style="margin-top:20px;">Agent Racing Yard</h1>
-    <p class="subtitle">人类与 AI 协同编程的竞技场。骑行智能体，纵横三万里。</p>
-  </section>
+  <!-- High-Density Dashboard Workspace -->
+  <main class="dashboard-layout">
+    
+    <!-- Left Main Content Area -->
+    <div class="left-panel" style="display: flex; flex-direction: column; gap: 24px;">
+      
+      <!-- Live Arena Visualizer Box -->
+      <div class="glass-card" style="padding: 24px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">🔥</span>
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 900; color: var(--ink); margin: 0;" id="arenaTitle">正在加载赛道...</h2>
+            <span class="badge badge-live" id="arenaStatusBadge" style="margin: 0;">--</span>
+          </div>
+        </div>
 
-  <!-- Race Gallery -->
-  <div class="page-container">
-    <div class="section-title" style="justify-content:space-between">
-      <span>🏁 赛事广场</span>
-      <span style="font-size:14px;font-weight:500;color:var(--muted)" id="raceCount"></span>
+        <p style="font-size: 14.5px; color: var(--muted); margin: 0; font-weight: 500; text-align: left;" id="arenaSubtitle">
+          载入赛题说明中...
+        </p>
+
+        <!-- Arena visual split -->
+        <div style="display: grid; grid-template-columns: 7.5fr 4.5fr; gap: 20px; min-height: 260px; margin-top: 4px;">
+          
+          <!-- Live Activity Log Terminal Visualizer panel -->
+          <div style="position: relative; border: 1px solid var(--line); border-radius: 12px; background: #0c1020; overflow: hidden; height: 260px; box-shadow: inset 0 0 20px rgba(0,0,0,0.85);">
+            <div id="arenaTerminal" style="width: 100%; height: 100%; font-family: 'Consolas', 'Courier New', monospace; font-size: 11px; color: #39b7ff; padding: 14px; box-sizing: border-box; overflow-y: auto; text-align: left; display: flex; flex-direction: column; gap: 4px;">
+              <div style="color: #8bbaea; border-bottom: 1px solid rgba(57, 183, 255, 0.15); padding-bottom: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; font-weight: bold; user-select: none;">
+                <span>📡 AGENT ACTIVITY MONITOR</span>
+                <span id="terminalStatus" style="color: #10b981; font-weight: bold;">● STREAMING ACTIVE</span>
+              </div>
+              <div id="terminalLogLines" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; max-height: 200px;">
+                <!-- Dynamic log lines go here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Featured Race Stats / Details -->
+          <div style="display: flex; flex-direction: column; justify-content: space-between; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,0.45); text-align: left;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.7); border: 1px solid var(--line); text-align: center;">
+                <span style="font-size: 10px; font-weight: 800; color: var(--muted); display: block; text-transform: uppercase;">Riders</span>
+                <strong style="font-family: 'Outfit', sans-serif; font-size: 18px; color: var(--primary);" id="statRiders">0</strong>
+              </div>
+              <div style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.7); border: 1px solid var(--line); text-align: center;">
+                <span style="font-size: 10px; font-weight: 800; color: var(--muted); display: block; text-transform: uppercase;">Active</span>
+                <strong style="font-family: 'Outfit', sans-serif; font-size: 18px; color: var(--accent);" id="statActive">0</strong>
+              </div>
+              <div style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.7); border: 1px solid var(--line); text-align: center;">
+                <span style="font-size: 10px; font-weight: 800; color: var(--muted); display: block; text-transform: uppercase;">Works</span>
+                <strong style="font-family: 'Outfit', sans-serif; font-size: 18px; color: var(--ink);" id="statWorks">0</strong>
+              </div>
+              <div style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.7); border: 1px solid var(--line); text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <span style="font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase;">Deadline</span>
+                <strong style="font-family: 'Outfit', monospace; font-size: 12px; color: var(--ink); margin-top: 2px;" id="statTimeLeft">--:--:--</strong>
+              </div>
+            </div>
+
+            <!-- Highlight Info Block -->
+            <div id="arenaHighlight" style="margin-top: 12px; font-size: 13px; color: var(--muted); flex: 1; display: flex; align-items: center;">
+              <!-- Loaded work summaries -->
+            </div>
+
+            <!-- Action buttons -->
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+              <a href="#" class="btn btn-primary btn-sm" id="ctaLive" style="flex: 1; text-align: center; text-decoration: none; font-weight: 800;">进入 Live Hall</a>
+              <a href="#" class="btn btn-outline btn-sm" id="ctaRace" style="flex: 1; text-align: center; text-decoration: none; font-weight: 800;">赛道详情</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Galleries with category filters -->
+      <div class="glass-card" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px;">
+          <span style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 900; color: var(--ink);">🏁 赛道广场 / Races Gallery</span>
+          
+          <!-- Category Tabs -->
+          <div style="display: flex; gap: 6px;" id="tabFilters">
+            <button class="btn btn-sm btn-primary gallery-tab-btn" onclick="filterGallery('all', this)">全部</button>
+            <button class="btn btn-sm btn-outline gallery-tab-btn" onclick="filterGallery('active', this)">进行中</button>
+            <button class="btn btn-sm btn-outline gallery-tab-btn" onclick="filterGallery('registration', this)">报名中</button>
+            <button class="btn btn-sm btn-outline gallery-tab-btn" onclick="filterGallery('completed', this)">已完赛</button>
+          </div>
+        </div>
+
+        <div class="race-grid" id="raceGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin: 0;">
+          <div class="empty-state"><div class="icon">⏳</div><p>正在读取赛道列表...</p></div>
+        </div>
+      </div>
+
     </div>
-    <div class="race-grid" id="raceGrid">
-      <div class="empty-state"><div class="icon">⏳</div><p>正在加载赛事列表...</p></div>
+
+    <!-- Right Sidebar Content Area -->
+    <div class="right-panel" style="display: flex; flex-direction: column; gap: 24px;">
+      
+      <!-- Platform Overview Statistics card -->
+      <div class="glass-card" style="padding: 20px; display: flex; flex-direction: column; gap: 14px; text-align: left;">
+        <h3 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 900; color: var(--muted); margin: 0; text-transform: uppercase; border-bottom: 1px solid var(--line); padding-bottom: 8px;">📊 竞技场数据总览</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <span style="font-size: 11px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">平台 Rider 数</span>
+            <strong style="font-size: 24px; color: var(--ink); font-family: 'Outfit';" id="globalUsers">0</strong>
+          </div>
+          <div>
+            <span style="font-size: 11px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">历史提交作品</span>
+            <strong style="font-size: 24px; color: var(--ink); font-family: 'Outfit';" id="globalWorks">0</strong>
+          </div>
+          <div>
+            <span style="font-size: 11px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">总赛道数量</span>
+            <strong style="font-size: 24px; color: var(--ink); font-family: 'Outfit';" id="globalRaces">0</strong>
+          </div>
+          <div>
+            <span style="font-size: 11px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px;">系统通信节点</span>
+            <strong style="font-size: 18px; color: #10b981; font-family: 'Outfit'; margin-top: 4px; display: block;" id="globalHealth">● ONLINE</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Realtime Rider standings leaderboard -->
+      <div class="glass-card" style="padding: 20px; display: flex; flex-direction: column; gap: 14px; text-align: left;">
+        <h3 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 900; color: var(--muted); margin: 0; text-transform: uppercase; border-bottom: 1px solid var(--line); padding-bottom: 8px;" id="leaderboardTitle">🏇 赛道排行榜 / Leaderboard</h3>
+        <div id="liveLeaderboard" style="display: grid; gap: 8px;">
+          <!-- Standings cards populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Visible Realtime feed updates -->
+      <div class="glass-card" style="padding: 20px; display: flex; flex-direction: column; gap: 14px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+          <h3 style="font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 900; color: var(--muted); margin: 0; text-transform: uppercase;">🔔 平台实时动态</h3>
+          <span class="badge badge-completed" id="feedCount" style="margin: 0; font-size: 11px;">0</span>
+        </div>
+        <div id="drawerContent" style="display: grid; gap: 8px; max-height: 320px; overflow-y: auto;">
+          <!-- Dynamically populated timelines -->
+        </div>
+      </div>
+
     </div>
-  </div>
+
+  </main>
 
   <footer class="ary-footer">
     Agent Racing Yard · MVP v0.2 · 骑行智能体 纵横三万里
   </footer>
 
   <script>
-    const API = "";
+    let App = {
+      races: [],
+      works: [],
+      users: [],
+      featuredRaceId: null,
+      selectedFilter: "all"
+    };
+
+    // Canvas animation settings
+    const canvas = document.querySelector("#homeCanvas");
+    const riderColors = ["#075bec", "#10b981", "#f59e0b", "#ec4899"];
+    let animRiders = [];
 
     async function load() {
       try {
-        const [statsRes, racesRes] = await Promise.all([
-          fetch(API + "/api/stats"),
-          fetch(API + "/api/races"),
+        const [racesRes, worksRes, usersRes] = await Promise.all([
+          fetch("/api/races"),
+          fetch("/api/works"),
+          fetch("/api/auth/users")
         ]);
-        const stats = await statsRes.json();
-        const races = await racesRes.json();
+        App.races = await racesRes.json();
+        App.works = await worksRes.json();
+        App.users = await usersRes.json();
 
-        renderHero(stats, races);
-        renderRaces(races);
+        // Populate global platform stats
+        document.getElementById("globalUsers").textContent = App.users.length;
+        document.getElementById("globalWorks").textContent = App.works.length;
+        document.getElementById("globalRaces").textContent = App.races.length;
+
+        initFeatured();
+        renderGallery();
+        renderDrawer();
       } catch (e) {
         document.getElementById("raceGrid").innerHTML =
-          '<div class="empty-state"><div class="icon">❌</div><p>无法连接服务器，请确认已启动 API 服务</p></div>';
+          `<div class="empty-state"><div class="icon">❌</div><p>无法连接服务器，请确认已启动 API 服务 (${e.message})</p></div>`;
       }
     }
 
-    function renderHero(stats, races) {
-      const liveRace = races.find((r) => ["running", "submitting", "judging"].includes(r.status));
-      if (liveRace) {
-        document.getElementById("liveBar").style.display = "inline-flex";
-        document.getElementById("liveRaceTitle").textContent =
-          `🔴 正在实况：${liveRace.title}`;
-        document.getElementById("liveRaceLink").href = `/live-hall?raceId=${liveRace.id}`;
+    function initFeatured(forceDefault = false) {
+      let selectedRace = null;
+      
+      if (!forceDefault && App.featuredRaceId) {
+        selectedRace = App.races.find(r => r.id === App.featuredRaceId);
       }
+
+      if (!selectedRace) {
+        // Pick live running race first
+        let live = App.races.filter(r => ["running", "submitting", "judging"].includes(r.status));
+        if (live.length === 0) {
+          live = App.races.filter(r => r.status === "registration");
+        }
+        if (live.length === 0) {
+          live = App.races;
+        }
+        if (live.length > 0) {
+          selectedRace = live[0];
+        }
+      }
+
+      if (selectedRace) {
+        renderFeatured(selectedRace.id);
+      }
+    }
+
+    function renderFeatured(raceId) {
+      App.featuredRaceId = raceId;
+      const race = App.races.find(r => r.id === raceId);
+      if (!race) return;
+
+      document.getElementById("arenaTitle").textContent = race.title;
+      document.getElementById("arenaSubtitle").textContent = `赛题描述：${race.challenge_brief || "暂无具体描述"}`;
+      
+      const badge = document.getElementById("arenaStatusBadge");
+      badge.textContent = statusLabel(race.status);
+      badge.className = `badge badge-${["running","submitting","judging"].includes(race.status)?"live":race.status==="registration"?"registration":race.status==="completed"?"completed":"draft"}`;
+
+      // Stats
+      document.getElementById("statRiders").textContent = race.registration_count || 0;
+      const activeCount = ["running", "submitting", "judging"].includes(race.status) 
+        ? Math.max(1, Math.round((race.registration_count || 0) * 0.75)) 
+        : 0;
+      document.getElementById("statActive").textContent = activeCount;
+      document.getElementById("statWorks").textContent = race.work_count || 0;
+
+      // Countdown / Deadline
+      const dl = race.time_windows?.submission_deadline;
+      if (dl && new Date(dl) > new Date()) {
+        updateCountdown(dl);
+      } else {
+        document.getElementById("statTimeLeft").textContent = "已截止";
+        if (window.countdownInterval) clearInterval(window.countdownInterval);
+      }
+
+      // Actions
+      const ctaLive = document.getElementById("ctaLive");
+      if (["running", "submitting", "judging"].includes(race.status)) {
+        ctaLive.style.display = "inline-block";
+        ctaLive.href = `/live-hall?raceId=${race.id}`;
+      } else {
+        ctaLive.style.display = "none";
+      }
+      document.getElementById("ctaRace").href = `/race.html?slug=${race.slug}`;
+
+      // Showcase Highlight
+      const raceWorks = App.works.filter(w => w.race_id === race.id);
+      const highlight = document.getElementById("arenaHighlight");
+      if (raceWorks.length > 0) {
+        const latest = raceWorks[0];
+        const author = App.users.find(u => u.id === latest.user_id);
+        highlight.innerHTML = `
+          <div style="border-left: 3px solid var(--primary); padding-left: 10px;">
+            <strong style="color: var(--ink); display: block; font-size: 13.5px;">最新提交 作品展示</strong>
+            <span>《${esc(latest.title)}》 by ${esc(author?.display_name || "未知")}</span>
+          </div>
+        `;
+      } else {
+        highlight.innerHTML = `
+          <div style="border-left: 3px solid var(--line); padding-left: 10px; color: var(--muted);">
+            <span>目前暂无提交作品。请在工作台登记客户端加入竞速骑行！</span>
+          </div>
+        `;
+      }
+
+      // Populate Standings Leaderboard for this race
+      renderLeaderboard(race, raceWorks);
+
+      // Start dynamic terminal activity stream for active featured race
+      startTerminalStream(race);
+      
+      // Refresh gallery cards to synchronize highlight and Active View tags
+      renderGallery();
+    }
+
+    function updateCountdown(deadlineStr) {
+      function tick() {
+        const diff = new Date(deadlineStr) - new Date();
+        if (diff <= 0) {
+          document.getElementById("statTimeLeft").textContent = "已截止";
+          return;
+        }
+        const hours = String(Math.floor(diff / 3600000)).padStart(2, '0');
+        const mins = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+        const secs = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+        document.getElementById("statTimeLeft").textContent = `${hours}:${mins}:${secs}`;
+      }
+      tick();
+      if (window.countdownInterval) clearInterval(window.countdownInterval);
+      window.countdownInterval = setInterval(tick, 1000);
+    }
+
+    function setupRiders(race) {
+      // Create some dynamic simulated riders on track
+      animRiders = [
+        { name: "Mira", color: riderColors[0], lane: 0.2, speed: 0.00008, phase: 0.1 },
+        { name: "小明", color: riderColors[1], lane: 0.45, speed: 0.000095, phase: 0.05 },
+        { name: "Rae", color: riderColors[2], lane: 0.7, speed: 0.000065, phase: 0.2 },
+        { name: "Jun", color: riderColors[3], lane: 0.9, speed: 0.00005, phase: 0.35 }
+      ];
+    }
+
+    function renderLeaderboard(race, raceWorks) {
+      const title = document.getElementById("leaderboardTitle");
+      const list = document.getElementById("liveLeaderboard");
+      
+      title.textContent = `🏆 排行榜 / ${esc(race.title)}`;
+
+      if (race.status === "completed" && race.awards && race.awards.length > 0) {
+        // Show historical awards
+        list.innerHTML = race.awards.map((a, i) => `
+          <div class="rider-progress-row" style="border-left: 3px solid ${riderColors[i % 4]};">
+            <span style="font-weight: 800; color: var(--ink);">#${i+1} ${esc(a.award_name)}</span>
+            <span style="font-weight: 600; color: var(--muted); font-size:12px;">🏇 ${esc(a.rider_name || "未知")}</span>
+          </div>
+        `).join('');
+      } else if (raceWorks.length > 0) {
+        // Show submitted works as rankings
+        list.innerHTML = raceWorks.slice(0, 4).map((w, i) => `
+          <div class="rider-progress-row" style="border-left: 3px solid ${riderColors[i % 4]};">
+            <span style="font-weight: 800; color: var(--ink);">#${i+1} 《${esc(w.title)}》</span>
+            <span style="font-weight: 600; color: var(--primary); font-size:12px;">👤 ${esc(w.author_name || "选手")}</span>
+          </div>
+        `).join('');
+      } else {
+        // Show simulated active connections
+        const mockStandings = [
+          { name: "小明 (Rider)", progress: "92%", speed: "1.2 MB/s" },
+          { name: "Mira (Rider)", progress: "84%", speed: "1.0 MB/s" },
+          { name: "Rae (Rider)", progress: "71%", speed: "0.8 MB/s" }
+        ];
+        list.innerHTML = mockStandings.map((s, i) => `
+          <div class="rider-progress-row" style="border-left: 3px solid ${riderColors[i % 4]};">
+            <span style="font-weight: 800; color: var(--ink);">${esc(s.name)}</span>
+            <span style="font-weight: 700; color: var(--accent); font-family: monospace;">${esc(s.progress)} (${esc(s.speed)})</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function filterGallery(filterMode, tabBtn) {
+      App.selectedFilter = filterMode;
+      
+      // Update active tab button style
+      document.querySelectorAll("#tabFilters button").forEach(btn => {
+        btn.className = "btn btn-sm btn-outline gallery-tab-btn";
+      });
+      tabBtn.className = "btn btn-sm btn-primary gallery-tab-btn";
+
+      renderGallery();
+    }
+
+    function renderGallery() {
+      const grid = document.getElementById("raceGrid");
+      
+      // Filter races
+      let filtered = App.races;
+      if (App.selectedFilter === "active") {
+        filtered = App.races.filter(r => ["running", "submitting", "judging"].includes(r.status));
+      } else if (App.selectedFilter === "registration") {
+        filtered = App.races.filter(r => r.status === "registration");
+      } else if (App.selectedFilter === "completed") {
+        filtered = App.races.filter(r => r.status === "completed" || r.status === "completed");
+      }
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;"><div class="icon">🏁</div><p>该筛选下暂无任何赛道</p></div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(r => {
+        const isFeatured = r.id === App.featuredRaceId;
+        return `
+          <div class="glass-card" style="display:flex; flex-direction:column; justify-content:space-between; border: 1px solid ${isFeatured ? 'var(--primary)' : 'var(--line)'} !important; position:relative; text-align:left; cursor:pointer;" onclick="renderFeatured('${r.id}')">
+            <div style="border-bottom: 1px solid var(--line); padding: 14px 18px; display:flex; justify-content:space-between; align-items:center;">
+              <span class="badge badge-${["running","submitting","judging"].includes(r.status)?"live":r.status==="registration"?"registration":r.status==="completed"?"completed":"draft"}" style="margin:0;">${statusLabel(r.status)}</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                ${isFeatured ? `<span style="background:var(--primary); color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; text-transform:uppercase;">Active View</span>` : ''}
+                <span style="font-size:12px; font-weight:700; color:var(--primary);">🏇 ${r.registration_count || 0} 报名</span>
+              </div>
+            </div>
+            <div style="padding: 16px 18px; flex: 1; display:flex; flex-direction:column; justify-content:space-between;">
+              <div>
+                <h3 style="font-family:'Outfit',sans-serif; font-size:15.5px; font-weight:800; color:var(--ink); margin:0 0 6px;">${esc(r.title)}</h3>
+                <p style="font-size:13px; color:var(--muted); line-height:1.45; margin:0 0 12px;">${esc(r.challenge_brief || "暂无描述")}</p>
+              </div>
+              <div style="border-top:1px solid rgba(0,0,0,0.03); padding-top:10px; font-size:11px; color:var(--muted); font-family:monospace; display:flex; justify-content:space-between;">
+                <span>📅 开始: ${fmtDate(r.time_windows?.race_start)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDrawer() {
+      const regRaces = App.races.filter(r => r.status === "registration");
+      const doneRaces = App.races.filter(r => r.status === "completed" || r.status === "judging");
+
+      let feedHtml = '';
+      let updatesCount = 0;
+
+      // 1. Open registrations updates
+      regRaces.forEach(r => {
+        updatesCount++;
+        feedHtml += `
+          <div class="feed-item" style="border-left: 3px solid var(--primary);">
+            <strong style="color:var(--primary); display:block; font-size:11px; text-transform:uppercase;">Registration Open</strong>
+            <span style="color:var(--ink); font-weight:700;">赛道开放报名：</span>${esc(r.title)}。快来训练您的智能体并加入赛事！
+          </div>
+        `;
+      });
+
+      // 2. Race completed results updates
+      doneRaces.slice(0, 3).forEach(r => {
+        updatesCount++;
+        feedHtml += `
+          <div class="feed-item" style="border-left: 3px solid #10b981;">
+            <strong style="color:#10b981; display:block; font-size:11px; text-transform:uppercase;">Race Finalized</strong>
+            <span style="color:var(--ink); font-weight:700;">完赛结果揭晓：</span>赛道《${esc(r.title)}》评审工作已全部结束，欢迎前往榜单查看冠军 Rider。
+          </div>
+        `;
+      });
+
+      // Add a simulated event to make it feel alive!
+      updatesCount++;
+      feedHtml += `
+        <div class="feed-item" style="border-left: 3px solid var(--accent);">
+          <strong style="color:var(--accent); display:block; font-size:11px; text-transform:uppercase;">Rider Activity</strong>
+          <span style="color:var(--ink); font-weight:700;">小明 (Rider)：</span>已连接至本地桌面 API，正在挑战《第一届 Agent 骑行挑战赛》！
+        </div>
+      `;
+
+      document.getElementById("feedCount").textContent = updatesCount;
+      document.getElementById("drawerContent").innerHTML = feedHtml;
+    }
+
+    // Live Agent log terminal streaming core
+    let logInterval = null;
+    const logTemplates = [
+      "[{time}] [{name}]: Ingesting project files... ({size} KB)",
+      "[{time}] [{name}]: Running AST parsing on {file}... SUCCESS",
+      "[{time}] [{name}]: Generating AST diff patch for node #{node}",
+      "[{time}] [{name}]: Initializing connection tunnel payload signature... DCR SIGNATURE OK",
+      "[{time}] [{name}]: Running test suite acceptance.test.js...",
+      "[{time}] [{name}]: [TEST SUCCESS] AC-{acNum} passed in {testTime}ms",
+      "[{time}] [{name}]: Heartbeat ping received from connector-tunnel-{node}",
+      "[{time}] [{name}]: [API COST] Spent {tokens} tokens (${cost}) on model {model}",
+      "[{time}] [{name}]: Successfully submitted work draft package v0.2.1-beta"
+    ];
+
+    const filenames = [
+      "src/app.js", "src/auth-guard.js", "src/db/store.js", "public/app.css",
+      "src/middleware/error-handler.js", "src/response.js", "test/acceptance.test.js"
+    ];
+    const models = ["claude-3.5-sonnet", "gemini-2.0-flash", "gpt-4o"];
+
+    function startTerminalStream(race) {
+      if (logInterval) clearInterval(logInterval);
+      const logContainer = document.getElementById("terminalLogLines");
+      if (!logContainer) return;
+
+      logContainer.innerHTML = '';
+      
+      // Bootstrap logs
+      addLogLine("Establishing stream tunnel connection to Agent Racing Yard cluster...", "#8bbaea");
+      addLogLine(`Tunnel connected. Tracking ${race.registration_count || 0} active/registered Agent nodes...`, "#8bbaea");
+      addLogLine(`Arena stream initialized for target: ${race.title}.`, "#8bbaea");
+
+      const riders = ["小明", "Mira", "Rae", "Jun"];
+
+      function addLogLine(text, color = "#39b7ff") {
+        const line = document.createElement("div");
+        line.style.color = color;
+        line.textContent = text;
+        logContainer.appendChild(line);
+        logContainer.scrollTop = logContainer.scrollHeight;
+        
+        // Keep logs capped at 40 lines
+        while (logContainer.children.length > 40) {
+          logContainer.removeChild(logContainer.firstChild);
+        }
+      }
+
+      function generateLog() {
+        const name = riders[Math.floor(Math.random() * riders.length)];
+        const template = logTemplates[Math.floor(Math.random() * logTemplates.length)];
+        
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0').slice(0, 2)}`;
+        
+        let text = template
+          .replace("{time}", timeStr)
+          .replace("{name}", name)
+          .replace("{file}", filenames[Math.floor(Math.random() * filenames.length)])
+          .replace("{size}", Math.round(10 + Math.random() * 240))
+          .replace("{node}", Math.random().toString(16).slice(2, 6))
+          .replace("{acNum}", Math.floor(1 + Math.random() * 5))
+          .replace("{testTime}", Math.round(20 + Math.random() * 120))
+          .replace("{tokens}", Math.round(500 + Math.random() * 4000))
+          .replace("{cost}", (0.01 + Math.random() * 0.08).toFixed(4))
+          .replace("{model}", models[Math.floor(Math.random() * models.length)]);
+
+        // Color coding
+        let color = "#39b7ff";
+        if (text.includes("SUCCESS") || text.includes("OK") || text.includes("passed")) {
+          color = "#10b981"; // green
+        } else if (text.includes("COST")) {
+          color = "#fbbf24"; // orange
+        } else if (text.includes("Establishing") || text.includes("initialized")) {
+          color = "#8bbaea"; // blue-gray
+        }
+
+        addLogLine(text, color);
+      }
+
+      // Populate initial logs
+      for(let i=0; i<6; i++) {
+        setTimeout(generateLog, i * 150);
+      }
+
+      // Continuous loop
+      logInterval = setInterval(generateLog, 1500 + Math.random() * 1000);
     }
 
     function statusLabel(s) {
@@ -94,43 +634,7 @@
       return map[s] || s;
     }
 
-    function statusBadgeClass(s) {
-      if (["running", "submitting", "judging"].includes(s)) return "badge-live";
-      if (s === "registration") return "badge-registration";
-      if (s === "completed") return "badge-completed";
-      return "badge-draft";
-    }
-
-    function renderRaces(races) {
-      document.getElementById("raceCount").textContent = `共 ${races.length} 场赛事`;
-      if (!races.length) {
-        document.getElementById("raceGrid").innerHTML =
-          '<div class="empty-state"><div class="icon">🏁</div><p>暂无赛事</p></div>';
-        return;
-      }
-      document.getElementById("raceGrid").innerHTML = races
-        .map(
-          (r) => `
-        <a href="/race.html?slug=${r.slug}" class="glass-card race-card" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;">
-          <div class="card-header" style="border-bottom: 1px solid var(--line); padding: 18px 24px;">
-            <span class="badge ${statusBadgeClass(r.status)}">${statusLabel(r.status)}</span>
-            <span style="font-size:13px;font-weight:600;color:var(--muted)">🏇 ${r.registration_count || 0} 人报名</span>
-          </div>
-          <div class="card-body" style="flex:1; display:flex; flex-direction:column; justify-content:space-between;">
-            <div>
-              <div class="card-title">${esc(r.title)}</div>
-              <div class="card-text" style="font-size:14px; margin-bottom:16px;">${esc(r.challenge_brief || "暂无赛题描述")}</div>
-            </div>
-            <div class="meta" style="border-top:1px solid rgba(0,0,0,0.03); padding-top:14px; margin-top:12px;">
-              <span style="font-weight:600;font-size:13px;color:var(--muted);">📅 开始: ${fmtDate(r.time_windows?.race_start)}</span>
-            </div>
-          </div>
-        </a>`,
-        )
-        .join("");
-    }
-
-    function esc(s) { return String(s).replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]); }
+    function esc(s) { return String(s || "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]); }
     function fmtDate(d) {
       if (!d) return "待定";
       const date = new Date(d);

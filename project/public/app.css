@@ -594,30 +594,6 @@ body::after {
   --shadow: 0 18px 44px rgba(11, 57, 150, 0.16);
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html {
-  min-width: 320px;
-  background: #eef6ff;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.95) 0 24%, transparent 46%),
-    linear-gradient(115deg, rgba(18, 119, 255, 0.08), transparent 38%),
-    linear-gradient(245deg, rgba(18, 119, 255, 0.1), transparent 42%),
-    #eef6ff;
-  color: var(--ink);
-  font-family:
-    "Arial Narrow", "PingFang SC", "Microsoft YaHei", Inter, ui-sans-serif,
-    system-ui, sans-serif;
-  letter-spacing: 0;
-}
 
 button,
 a,

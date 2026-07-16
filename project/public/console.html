@@ -593,6 +593,14 @@ async function safeJson(res, defaultValue = []) {
   }
 }
 
+function getErrorMessage(d, defaultMsg = '操作失败') {
+  if (!d) return defaultMsg;
+  if (typeof d.error === 'object' && d.error !== null) {
+    return d.error.message || JSON.stringify(d.error);
+  }
+  return d.error || d.message || defaultMsg;
+}
+
 function fmtDate(d) {
   if (!d) return '-';
   const date = new Date(d);
@@ -924,7 +932,7 @@ async function doUpdateRaceStatus(raceId) {
   try {
     const res = await fetch(`/api/races/${raceId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:newStatus}) });
     if (res.ok) { showFeedback('ok',`✅ 状态已更新为「${statusLabel(newStatus)}」`); refreshData(); }
-    else { const d=await res.json(); showFeedback('error',`❌ ${d.error||'更新失败'}`); }
+    else { const d=await res.json(); showFeedback('error',`❌ ${getErrorMessage(d,'更新失败')}`); }
   } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
 }
 
@@ -951,7 +959,7 @@ async function doApprove(regId) {
     const res = await fetch(`/api/registrations/${regId}/approve`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({approvedByUserId:App.currentUser?.id||'system'}) });
     const data = await res.json();
     if (data.ok) { showFeedback('ok', `✅ 审核通过 — RaceProject 已自动生成`); refreshData(); }
-    else showFeedback('error', `❌ ${data.error||'审核失败'}`);
+    else showFeedback('error', `❌ ${getErrorMessage(data,'审核失败')}`);
   } catch(e) { showFeedback('error', `请求失败: ${e.message}`); }
 }
 
@@ -973,7 +981,7 @@ async function doCreateRace() {
   if (!title) { showFeedback('error','请输入赛事名称'); return; }
   try {
     const res = await fetch('/api/races', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title, challengeBrief:brief, slug, status, organizerUserIds:[App.currentUser?.id]}) });
-    if (!res.ok) { const d=await res.json(); showFeedback('error',`创建失败: ${d.error||'未知错误'}`); return; }
+    if (!res.ok) { const d=await res.json(); showFeedback('error',`创建失败: ${getErrorMessage(d,'未知错误')}`); return; }
     showFeedback('ok', `✅ 赛事「${title}」创建成功！`);
     await refreshData();
     // Select the new race
@@ -989,7 +997,7 @@ async function doReject(regId) {
     const res = await fetch(`/api/registrations/${regId}/reject`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({reason:reason||'主办方拒绝'}) });
     const data = await res.json();
     if (data.ok) { showFeedback('ok', `✅ 已拒绝该报名`); refreshData(); }
-    else showFeedback('error', `❌ ${data.error||'操作失败'}`);
+    else showFeedback('error', `❌ ${getErrorMessage(data,'操作失败')}`);
   } catch(e) { showFeedback('error', `请求失败: ${e.message}`); }
 }
 
@@ -1035,7 +1043,7 @@ async function doAssignJudge(raceId, workId) {
   try {
     const res = await fetch('/api/judge-assignments', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({raceId, workId, judgeUserId:sel.value, assignedByUserId:App.currentUser?.id}) });
     if (res.ok) { showFeedback('ok','✅ 评委已分配'); refreshData(); }
-    else { const d=await res.json(); showFeedback('error',`❌ ${d.error||'分配失败'}`); }
+    else { const d=await res.json(); showFeedback('error',`❌ ${getErrorMessage(d,'分配失败')}`); }
   } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
 }
 
@@ -1074,7 +1082,7 @@ async function doCreateAward(raceId) {
   try {
     const res = await fetch('/api/awards', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({raceId, registrationId:regId, awardName:name, rank, decisionReason:reason}) });
     if (res.ok) { showFeedback('ok',`✅ 奖项「${name}」已创建`); refreshData(); }
-    else { const d=await res.json(); showFeedback('error',`❌ ${d.error||'创建失败'}`); }
+    else { const d=await res.json(); showFeedback('error',`❌ ${getErrorMessage(d,'创建失败')}`); }
   } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
 }
 
@@ -1082,7 +1090,7 @@ async function doPublishAward(awardId) {
   try {
     const res = await fetch(`/api/awards/${awardId}/publish`, { method:'PUT' });
     if (res.ok) { showFeedback('ok','✅ 奖项已发布'); refreshData(); }
-    else { const d=await res.json(); showFeedback('error',`❌ ${d.error||'发布失败'}`); }
+    else { const d=await res.json(); showFeedback('error',`❌ ${getErrorMessage(d,'发布失败')}`); }
   } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
 }
 
@@ -1132,7 +1140,7 @@ async function doSubmitJudging(assignmentId, workId) {
   try {
     const res = await fetch('/api/judging-records', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({judgeAssignmentId:assignmentId, workId, judgeUserId:u.id, scoreResult:{score:scoreResult}, scoreRiding:{score:scoreRiding}, comments}) });
     if (res.ok) { showFeedback('ok','✅ 评审已提交'); refreshData(); }
-    else { const d=await res.json(); showFeedback('error',`❌ ${d.error||'提交失败'}`); }
+    else { const d=await res.json(); showFeedback('error',`❌ ${getErrorMessage(d,'提交失败')}`); }
   } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
 }
 
@@ -1210,7 +1218,7 @@ async function doRegisterCA(raceProjectId) {
     const res = await fetch('/api/ca-connections', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({raceProjectId, connectorId, caProjectId:caProjectId||undefined, caType}) });
     const data = await res.json();
     if (res.ok) { showFeedback('ok', `✅ CA 连接已登记 (${data.id?.slice(0,8)}...)`); refreshData(); }
-    else showFeedback('error', `❌ ${data.error||'登记失败'}`);
+    else showFeedback('error', `❌ ${getErrorMessage(data,'登记失败')}`);
   } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
 }
 
@@ -1282,7 +1290,7 @@ async function doUpdateWork(workId) {
       App.editingRiderWork = false;
       await refreshData(); 
     } else { 
-      showFeedback('error', `❌ ${data.error||'更新失败'}`); 
+      showFeedback('error', `❌ ${getErrorMessage(data,'更新失败')}`); 
     }
   } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
 }
@@ -1297,7 +1305,7 @@ async function doCreateWork(regId) {
     const res = await fetch('/api/works', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({registrationId:regId, title, summary, description:desc, repoUrl:repoUrl||undefined}) });
     const data = await res.json();
     if (res.ok) { showFeedback('ok', `✅ 作品「${title}」已提交！`); refreshData(); switchWorkspaceTab('rider-overview'); }
-    else showFeedback('error', `❌ ${data.error||'提交失败'}`);
+    else showFeedback('error', `❌ ${getErrorMessage(data,'提交失败')}`);
   } catch(e) { showFeedback('error',`请求失败: ${e.message}`); }
 }
 
