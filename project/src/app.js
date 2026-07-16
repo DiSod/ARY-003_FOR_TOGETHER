@@ -136,6 +136,93 @@ app.put("/api/auth/users/:id/roles", requireAuth, requireRole("admin"), (req, re
   ok(res, { id, roles });
 });
 
+// ==================== GitHub OAuth Routes ====================
+
+// GET /api/auth/github — redirect to GitHub authorization page
+app.get("/api/auth/github", (_req, res) => {
+  const url = "https://github.com/login/oauth/authorize" +
+    `?client_id=${config.githubClientId}` +
+    `&redirect_uri=${config.githubCallbackUrl}` +
+    `&scope=read:user`;
+  res.redirect(url);
+});
+
+// GET /api/auth/github/callback — handle GitHub OAuth callback
+app.get("/api/auth/github/callback", async (req, res, next) => {
+  try {
+    const { code, error: oauthError } = req.query;
+    if (oauthError) return badRequest(res, `GitHub 授权失败: ${oauthError}`);
+    if (!code) return badRequest(res, "缺少授权码");
+
+    // 1. Exchange code for access token
+    const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        client_id: config.githubClientId,
+        client_secret: config.githubClientSecret,
+        code,
+      }),
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) return badRequest(res, "获取 GitHub access_token 失败: " + (tokenData.error_description || tokenData.error));
+
+    // 2. Fetch user info from GitHub
+    const userRes = await fetch("https://api.github.com/user", {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    if (!userRes.ok) return internalError(res, "获取 GitHub 用户信息失败");
+    const gh = await userRes.json();
+
+    // 3. Match or create ARY user
+    let user = get("SELECT * FROM users WHERE github_account_id = ?", [gh.login]);
+    if (!user) {
+      // Auto-create new user
+      const id = uid();
+      const t = now();
+      const profile = JSON.stringify({
+        avatar_url: gh.avatar_url,
+        name: gh.name || gh.login,
+        bio: gh.bio || "",
+        company: gh.company || "",
+        blog: gh.blog || "",
+        location: gh.location || "",
+      });
+      run(
+        `INSERT INTO users (id, slug, display_name, email, github_account_id, avatar_url, roles, profile, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?)`,
+        [id, gh.login, gh.name || gh.login, gh.email || `${gh.login}@users.noreply.github.com`,
+         gh.login, gh.avatar_url || "", profile, t, t],
+      );
+      save();
+      logger.info("auth", "New user auto-created via GitHub OAuth", { id, login: gh.login });
+      user = get("SELECT * FROM users WHERE id = ?", [id]);
+    } else {
+      // Update avatar/profile on each login
+      const patch = {
+        avatar_url: gh.avatar_url || user.avatar_url,
+        updated_at: now(),
+      };
+      if (gh.name) patch.display_name = gh.name;
+      update("users", user.id, patch);
+      save();
+    }
+
+    // 4. Parse and return (same format as demo login)
+    user = get("SELECT * FROM users WHERE id = ?", [user.id]);
+    user.roles = JSON.parse(user.roles || "[]");
+    user.profile = JSON.parse(user.profile || "{}");
+
+    // Redirect back to console with token in hash (SPA-friendly)
+    res.redirect(`/console#token=demo-token-${user.id}`);
+  } catch (e) {
+    next(e);
+  }
+});
+
 // ==================== Race Routes ====================
 
 // GET /api/races — public race list
