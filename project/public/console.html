@@ -1337,14 +1337,14 @@ async function doSubmitWork(workId) {
 // ===================== COMMON =====================
 
 async function refreshData() {
-  const r1 = await fetch('/api/races'); App.races = await r1.json();
-  const r2 = await fetch('/api/registrations'); App.registrations = await r2.json();
-  const r3 = await fetch('/api/race-projects'); App.raceProjects = await r3.json();
-  const r4 = await fetch('/api/works'); App.works = await r4.json();
-  const r5 = await fetch('/api/ca-connections'); App.caConnections = await r5.json();
-  const r6 = await fetch('/api/judge-assignments'); App.judgeAssignments = await r6.json();
-  const r7 = await fetch('/api/judging-records'); App.judgingRecords = await r7.json();
-  try { const r8 = await fetch('/api/awards'); App.awards = await r8.json(); } catch(e) {}
+  const r1 = await fetch('/api/races'); App.races = await safeJson(r1, []);
+  const r2 = await fetch('/api/registrations'); App.registrations = await safeJson(r2, []);
+  const r3 = await fetch('/api/race-projects'); App.raceProjects = await safeJson(r3, []);
+  const r4 = await fetch('/api/works'); App.works = await safeJson(r4, []);
+  const r5 = await fetch('/api/ca-connections'); App.caConnections = await safeJson(r5, []);
+  const r6 = await fetch('/api/judge-assignments'); App.judgeAssignments = await safeJson(r6, []);
+  const r7 = await fetch('/api/judging-records'); App.judgingRecords = await safeJson(r7, []);
+  try { const r8 = await fetch('/api/awards'); App.awards = await safeJson(r8, []); } catch(e) {}
   renderSidebar();
   if (App.currentRace) {
     const updated = App.races.find(r=>r.id===App.currentRace.id);

@@ -462,12 +462,28 @@ function runMigrations() {
 
 // --- Seed demo data ---
 export function seedDemo(overrides = {}) {
+  // Clean existing demo data to ensure fresh state
+  run("DELETE FROM awards");
+  run("DELETE FROM reports");
+  run("DELETE FROM judging_records");
+  run("DELETE FROM judge_assignments");
+  run("DELETE FROM works");
+  run("DELETE FROM race_projections");
+  run("DELETE FROM race_projects");
+  run("DELETE FROM sessions");
+  run("DELETE FROM ca_messages");
+  run("DELETE FROM ca_connections");
+  run("DELETE FROM registrations");
+  run("DELETE FROM races");
+  run("DELETE FROM users");
+  save();
+
   const t = now();
 
   // Organizer user
   const orgId = uid();
   run(
-    `INSERT OR IGNORE INTO users (id, github_account_id, slug, display_name, roles, created_at, updated_at)
+    `INSERT INTO users (id, github_account_id, slug, display_name, roles, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [orgId, "gh-organizer", "organizer", "赛事主办方", '["organizer","admin"]', t, t],
   );
