@@ -45,10 +45,6 @@ app.use((req, res, next) => {
   next();
 });
 
-function requireAuth(req, res, next) {
-  if (!req.user) return res.status(401).json({ error: "未登录" });
-  next();
-}
 
 function requireAdmin(req, res, next) {
   if (!req.user) return res.status(401).json({ error: "未登录" });
