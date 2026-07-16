@@ -4,30 +4,22 @@
 
 ## 当前阶段
 
-003 最终提交已全部完成（PRD-1 / UX-1 / DEV-1~7 / REL-1 / OPS-1 ✅）。当前等待进入 **004**（在 003 代码基础上优化升级）。
+**004 已启动**（PR #6 `feat/github-oauth-login` 准备合并到 master）。
 
-## 003 交付物总览
+## 004 已完成
 
-| 层面 | 内容 | 状态 |
+| 任务 | 说明 | 状态 |
 | --- | --- | --- |
-| **文档基线** | PRD、领域模型、IA、权限矩阵、QA Plan、Release & Ops Plan | ✅ |
-| **高保真原型** | 16 个页面 + 状态样张 + 桌面/移动端截图证据 | ✅ |
-| **后端 API** | Express 5 + SQLite，45 个端点 | ✅ |
-| **前端页面** | 15 个 HTML 页面（Public Site + Console + Admin + Live Hall + Screen） | ✅ |
-| **架构验证** | 46 条验收测试全绿（AC-1~AC-5 + 状态机 + 鉴权） | ✅ |
-| **运维脚本** | deploy.sh / backup.sh / health-check.sh / OPS_CHECKLIST.md | ✅ |
+| **GitHub OAuth 登录** | 后端路由 + 回调 + 自动建号 + Demo 模式兼容 | ✅ |
+| **API 响应格式统一** | 全部 ~60 处路由改用 response.js helpers | ✅ |
+| **公开页 OAuth 适配** | 共享 auth.js，9 个页面全部适配登录态 | ✅ |
+| **跨标签页登录同步** | localStorage 共享 token | ✅ |
+| **CI/CD 自动测试** | GitHub Actions — push/PR 自动跑 62 条测试 | ✅ |
+| **种子数据增强** | 5 用户（3 rider）、多选手注册 | ✅ |
+| **文档清理** | 删 2 重复文件，精简 Agent 导读 | ✅ |
+| **API 测试修复** | 修复 requireAuth 重复声明 + 响应格式适配 | ✅ |
 
-## 004 待办方向
-
-根据 `AgentDocs/03-open-questions.md` 和 `AgentDocs/01-ary-project-analysis.md` 的 DoD 标准，004 预期在以下方向进行优化：
-
-### 技术升级
-
-| 方向 | 003 现状 | 004 目标（待决策） |
-| --- | --- | --- |
-| **前端框架** | 原生 HTML/CSS/JS | React/Vue 组件化，对齐高保真原型 |
-| **后端框架** | Express 5 + SQLite | 评估 NestJS/Spring Boot |
-| **数据库** | SQLite（sql.js 内存加载） | 评估 PostgreSQL + Redis |
+## 004 待办方向（待团队决策）
 | **实时通讯** | HTTP 轮询（10 秒） | 评估 WebSocket 长连接 |
 | **登录鉴权** | Demo 模式（免密选用户） | 真实 GitHub OAuth |
 
