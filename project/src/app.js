@@ -244,26 +244,33 @@ app.get("/api/auth/github/callback", async (req, res, next) => {
         updated_at: now(),
       };
       if (gh.name) patch.display_name = gh.name;
-      update("users", user.id, patch);
-      save();
 
-      // Upgrade: check org membership for existing users with empty roles
-      if (config.githubOrg && (!user.roles || JSON.parse(user.roles).length === 0)) {
+      // Upgrade: grant admin if no admin exists yet
+      const currentRoles = JSON.parse(user.roles || "[]");
+      const adminExists = all("SELECT COUNT(*) as count FROM users WHERE roles LIKE '%admin%'")[0]?.count > 0;
+      if (!adminExists && !currentRoles.includes("admin")) {
+        currentRoles.push("admin", "organizer");
+        logger.info("auth", "No admin found — upgraded existing user to admin+organizer", { login: gh.login });
+      }
+      // Upgrade: check org membership for users with no rider role
+      if (config.githubOrg && !currentRoles.includes("rider")) {
         try {
           const orgRes = await fetch(`https://api.github.com/orgs/${config.githubOrg}/members/${gh.login}`, {
             headers: { Authorization: `Bearer ${tokenData.access_token}` },
           });
           if (orgRes.ok) {
-            const currentRoles = JSON.parse(user.roles || "[]");
             currentRoles.push("rider");
-            update("users", user.id, { roles: JSON.stringify(currentRoles), updated_at: now() });
-            save();
-            logger.info("auth", "Existing user upgraded — granted rider role", { login: gh.login, org: config.githubOrg });
+            logger.info("auth", "Org member — granted rider role", { login: gh.login, org: config.githubOrg });
           }
         } catch (orgErr) {
-          logger.warn("auth", "Failed to check GitHub org membership for existing user", { login: gh.login, error: orgErr.message });
+          logger.warn("auth", "Failed to check GitHub org membership", { login: gh.login, error: orgErr.message });
         }
       }
+      if (currentRoles.length !== (JSON.parse(user.roles || "[]").length)) {
+        patch.roles = JSON.stringify(currentRoles);
+      }
+      update("users", user.id, patch);
+      save();
     }
 
     // 4. Parse and return (same format as demo login)
