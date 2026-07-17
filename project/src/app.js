@@ -204,11 +204,11 @@ app.get("/api/auth/github/callback", async (req, res, next) => {
 
       // Determine default roles
       let defaultRoles = [];
-      // Rule 1: First user ever gets admin + organizer
-      const userCount = all("SELECT COUNT(*) as count FROM users")[0]?.count || 0;
-      if (userCount === 0) {
+      // Rule 1: First real (non-demo) user gets admin + organizer
+      const realUsers = all("SELECT COUNT(*) as count FROM users WHERE github_account_id NOT LIKE 'gh-%'")[0]?.count || 0;
+      if (realUsers === 0) {
         defaultRoles = ["admin", "organizer"];
-        logger.info("auth", "First user — granted admin+organizer roles", { login: gh.login });
+        logger.info("auth", "First real user — granted admin+organizer roles", { login: gh.login });
       }
       // Rule 2: Belongs to configured GitHub org → rider
       if (config.githubOrg) {
@@ -245,14 +245,16 @@ app.get("/api/auth/github/callback", async (req, res, next) => {
       };
       if (gh.name) patch.display_name = gh.name;
 
-      // Upgrade: grant admin if no admin exists yet
+      // Upgrade: grant admin+organizer if user has no roles and is first real user
       const currentRoles = JSON.parse(user.roles || "[]");
-      const adminExists = all("SELECT COUNT(*) as count FROM users WHERE roles LIKE '%admin%'")[0]?.count > 0;
-      if (!adminExists && !currentRoles.includes("admin")) {
-        currentRoles.push("admin", "organizer");
-        logger.info("auth", "No admin found — upgraded existing user to admin+organizer", { login: gh.login });
+      if (currentRoles.length === 0) {
+        const realUsers = all("SELECT COUNT(*) as count FROM users WHERE github_account_id NOT LIKE 'gh-%' AND roles != '[]'")[0]?.count || 0;
+        if (realUsers === 0) {
+          currentRoles.push("admin", "organizer");
+          logger.info("auth", "Upgraded existing user to admin+organizer", { login: gh.login });
+        }
       }
-      // Upgrade: check org membership for users with no rider role
+      // Upgrade: check org membership for users without rider role
       if (config.githubOrg && !currentRoles.includes("rider")) {
         try {
           const orgRes = await fetch(`https://api.github.com/orgs/${config.githubOrg}/members/${gh.login}`, {
