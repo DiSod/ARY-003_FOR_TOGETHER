@@ -299,85 +299,60 @@ PUT  /api/reports/:id/publish  — 发布报告
 - `STATUS.md`：REL-1 ✅ 完成、OPS-1 ✅ 完成
 - `PLAN.md`：近期待更新
 
-## 2026-07-16 — 004 第一轮迭代（GitHub OAuth + 统一响应 + 文档清理 + 种子数据增强）
+## 2026-07-17 — 004 第一次后端优化 代码审查与改进
 
 ### 背景
-003 全部交付完成后，三位同学合入了 3 个 PR（何争霖 UI 重构+安全修复、六次元后端中间件架构）。本轮在继承这些成果的基础上，完成了响应格式统一、GitHub OAuth 登录、公开页适配、种子数据增强等 004 方向的工作。
+基于 commit `cad4af8`（"004第一次后端优化"），进行了全面的代码审查、问题修复、测试补充和文档更新。
 
-### 一、后端中间件迁移收尾（修复六次元 PR 遗留问题）
+### 004 改动分析
 
-| 问题 | 修复 |
+**后端安全加固（app.js — 9 个文件，+404/-36 行）：**
+
+| 改动 | 说明 |
 | --- | --- |
-| `requireAuth` 重复声明 | app.js 同时 import 了 auth-guard.js 又定义同名函数 → 删除内联版本 |
-| ~60 处旧格式 `res.json({ ok: true })` / `res.status(400).json({ error })` | 全部迁移为 `ok(res, {...})` / `badRequest(res, msg)` 等 response.js helper |
-| `dotenv` 包缺失 | `import "dotenv/config"` 已写但未安装 → `npm install dotenv` |
-| `api.test.js` 测试适配 | 7 处断言适配 `{ success, data }` 新格式 + 注册测试补 auth header |
+| 全局 Auth 中间件 | 每个请求自动解析 Bearer token → 查库 → 设 `req.user` |
+| 内联 `requireAuth` / `requireAdmin` / `isOrganizerOfRace` | 简化的鉴权辅助函数 |
+| 14 个 API 端点权限收紧 | 报名、作品、CA 连接、Session、评委分配、评审记录、奖项、报告全部新增归属/角色校验 |
+| `PUT /api/works/:id` | 🆕 新增作品编辑端点（locked 状态不可编辑） |
+| 状态机流转校验 | `approve` 和 `publish` 操作增加状态机二次校验 |
 
-**结果：** 46 条架构测试 + 16 条 API 测试 = **62 条全部通过**
+**前端增强：**
 
-### 二、GitHub OAuth 登录（PR #6）
-
-| 文件 | 变更 |
+| 文件 | 改动 |
 | --- | --- |
-| `project/src/app.js` | 新增 `GET /api/auth/github`（跳转 GitHub 授权）+ `GET /api/auth/github/callback`（回调处理，自动建号/登录） |
-| `project/src/config.js` | 新增 `githubClientId` / `githubClientSecret` / `githubCallbackUrl` |
-| `project/.env.example` | 新增 GitHub OAuth 环境变量说明 |
-| `project/.env` | 实际配置（已加入 `.gitignore`，不提交密钥） |
-| `project/public/console.html` | 登录弹窗增加"Login with GitHub"按钮；`safeJson()` 适配统一响应；URL hash token 恢复 |
-| `.github/workflows/test.yml` | 🆕 CI/CD — PR 和 push 自动跑测试 |
+| `admin.html` | 登录态检测 + Admin 角色门禁 + Auth header |
+| `console.html` | fetch 拦截器自动注入 Auth + safeJson 容错 + Judge 工作台 + 作品编辑 UI |
+| `live-hall.html` | 赛事选择器下拉框 |
 
-### 三、公开页 OAuth 适配（9 个页面）
+### 发现并修复的问题
 
-| 文件 | 变更 |
-| --- | --- |
-| `project/public/auth.js` | 🆕 共享认证模块：`safeFetch()`、`AUTH` 状态管理（localStorage 跨标签页同步）、GitHub OAuth 回调处理、header 渲染 |
-| `home.html` | `fetch` → `safeFetch`，header 加 `#auth-area` |
-| `race.html` | 同上 + **报名按钮登录态感知**（未登录→显示"登录后报名"，已登录→显示"立即报名"），新增 `doRegister()` |
-| `works.html` | 同上 |
-| `work.html` | 同上（3 个 API 调用改为 safeFetch） |
-| `results.html` | 同上 |
-| `cooperation.html` | 同上 |
-| `rider.html` | 同上（5 个 API 调用改为 safeFetch） |
-| `review.html` | 同上（3 个 API 调用改为 safeFetch） |
-| `live-hall.html` | `fetch` → `safeFetch`（纯展示，无需登录按钮） |
-
-### 四、Bug 修复
-
-| Bug | 原因 | 修复 |
+| 问题 | 根因 | 修复 |
 | --- | --- | --- |
-| Console 工作台报 `filter is not a function` | `openWorkspace()` 和 `refreshData()` 直接用 `.json()` 没解包 `{success, data}` | 改用 `safeJson()` 统一解包 |
-| 重启后种子数据不更新 | `INSERT OR IGNORE` + 旧 SQLite 文件 | `seedDemo()` 先 `DELETE FROM` 全表再重建 |
-| 公开页与 Console 登录不同步 | `sessionStorage` 各标签页独立 | 改用 `localStorage` 跨标签页共享 |
-| OAuth 回调 500 | INSERT 用了不存在的 `email`/`avatar_url` 列 | 修正为 `profile` JSON 字段 |
-| GitHub OAuth 未配置时白页 | 跳转 GitHub 后因为没有 client_id 报错 | 未配置时显示友好提示 + 跳转 Console |
-| avatar 不显示 | auth.js 读 `u.avatar_url` 但数据在 `u.profile.avatar_url` | 改为 `u.profile?.avatar_url \|\| u.avatar_url` |
+| `requireAuth` 重复定义 | `auth-guard.js` 导出版本被 app.js 内联函数覆盖，import 无效 | 移除 import 中未使用的 `requireAuth` |
+| `workCanTransition` 未使用 | import 但 PUT /api/works 用硬编码 `=== "locked"` 判断 | 移除未使用的 import |
+| `auth.js` admin 权限不一致 | `isManagedRace` 中 admin 仍需出现在 `organizerUserIds`，与 `app.js` 的 `isOrganizerOfRace` 矛盾 | `isManagedRace` 增加 admin 提前返回 `true` |
 
-### 五、种子数据增强
+### 新增测试（10 条）
 
-新增 2 个演示选手 + 多赛事报名数据，未登录即可看到：
+**`004: 权限归属校验`（4 条）：**
+- 骑手只能为自己报名
+- 评委只能以本人身份提交评审记录
+- 非 organizer 不能管理赛事资源
+- admin 自动获得所有赛事管理权限
 
-| 赛事 | 状态 | 选手 |
-| --- | --- | --- |
-| 第一届 Agent 骑行挑战赛 | 进行中 | 🏇 2 人（骑手小明 + Alice Wang） |
-| 极速构建挑战赛 | 报名中 | 🏇 2 人（Alice 待审 + Bob 已通过） |
-| 架构大师赛 | 已结束 | 🏇 0 人 |
+**`004: 作品编辑与锁定`（6 条）：**
+- draft → submitted 状态流转
+- submitted → locked 状态流转
+- locked 不可回退 draft/submitted
+- business.submitWork 更新已有作品
+- locked 作品拒绝更新
 
-### 六、文档清理
+### 验证结果
+- ✅ `npm test` — **56 条全部通过**（原 46 条 + 新增 10 条）
+- ✅ 无破坏性变更
 
-| 操作 | 文件 |
-| --- | --- |
-| 🗑️ 删除 | `ux-1-closure.md`（与 closure-delivery.md 重复） |
-| 🗑️ 删除 | `ux-1-m2-input-final.md`（与 m2-input-final-checklist.md 重复） |
-| 📝 精简 | `01-ary-project-analysis.md` → Agent 导读（重复内容改为交叉引用） |
-| 📝 更新 | `004PLAN.md` → 记录 004 方向 |
-
-### 验证
-
-| 测试套件 | 结果 |
-| --- | --- |
-| `npm test`（46 条架构测试） | ✅ 全部通过 |
-| `node --test test/api.test.js`（16 条 API 测试） | ✅ 全部通过 |
-| GitHub Pages 公开页面加载 | ✅ 9/9 正常 |
-| Console 登录/工作台 | ✅ 所有信息面板正常 |
-| GitHub OAuth 全流程 | ✅ 跳转→授权→回调→Console 登录 |
-| 跨标签页 session 同步 | ✅ localStorage 共享 |
+### 待处理
+- [ ] 从 upstream (DiSod) 拉取 GitHub OAuth + UI 重构（当前 GitHub 网络不可达）
+- [ ] 前端页面端到端功能验证（需启动服务器逐页测试）
+- [ ] `PUT /api/works/:id` 改用 `workCanTransition` 替代硬编码状态检查
+- [ ] 考虑将 `isOrganizerOfRace` 提取为共享函数，消除 app.js 和 auth.js 的重复逻辑

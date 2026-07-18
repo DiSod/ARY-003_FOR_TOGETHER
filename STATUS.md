@@ -5,11 +5,10 @@
 ## 最新同步
 
 * 全部 11 个正式任务（PRD-1 / UX-1 / DEV-1~7 / REL-1 / OPS-1）均已完成。
-* 三位同学合入 3 个 PR（PR #1 何争霖权限修复 / PR #2 六次元后端中间件 / PR #3 何争霖UI重构）。
-* 004 阶段已完成：GitHub OAuth 登录、API 响应格式统一、公开页 OAuth 适配、CI/CD、种子数据增强。
-* `npm test` — **46 条全部通过**（架构测试）+ **16 条 API 测试全部通过**（六次元新增）。
-* 后端 45+ 个 API 端点（Express + SQLite），前端 15 个 HTML/JS 页面 + 共享 `auth.js` 模块。
-* 当前阶段：004 后续——Live Hall 赛道动画集成、前端回复格式全面对齐。
+* `npm test` — **56 条全部通过**（原 46 条 + 004 新增 10 条权限/作品编辑测试）。
+* 后端 45 个 API 端点已实现（Express + SQLite），前端 15 个 HTML 页面已交付。
+* 仓库已从 `ary-grs-003-DiSod` 迁移到独立仓库 `ARY-003_FOR_TOGETHER`，5 人团队通过 Git 分支协作。
+* 当前阶段：**004 已启动** — 第一次后端优化已完成代码审查、Bug 修复和测试补充。
 
 ## 当前结论
 
@@ -84,6 +83,18 @@
 | 高保真原型可浏览 | `design-prototype/index.html` |
 | AgentDocs 指引文档 | `AgentDocs/`（01 项目分析 / 02 全局设计 / 03 待决策问题 / record 工作日志） |
 | 任务设计文档 | `AgentDocs/devTask/`（dev3-4 / dev3 / dev5 / rel1-ops1） |
+
+## 004 进展 (2026-07-17)
+
+| 项目 | 状态 |
+| --- | --- |
+| 004 第一次后端优化代码审查 | ✅ 完成 |
+| `requireAuth` 重复定义修复 | ✅ 已修复 |
+| `auth.js` admin 权限不一致修复 | ✅ 已修复 |
+| `workCanTransition` 未使用 import 清理 | ✅ 已修复 |
+| 新增 10 条测试（权限归属 + 作品编辑） | ✅ 已通过 |
+| upstream (DiSod) OAuth + UI 重构合并 | ⏳ GitHub 网络不可达，待网络恢复后拉取 |
+| 前端端到端功能验证 | ⏳ 待启动服务器逐页测试 |
 
 ## 风险与阻塞
 
